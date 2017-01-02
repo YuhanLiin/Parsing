@@ -274,7 +274,52 @@ protected:
     };
     friend RegexpBuilder;
 
-public:
+    void addState(int state, std::vector<int>& curStates, int *listids, int id){
+        if (listids[state] != id){
+            listids[state] = id;
+            curStates.push_back(state);
+        }
+    }
+
+    virtual int isAccepting(int state) = 0;
+
+    int simulate(char& *str, int limit){
+        std::vector<int> curStates;
+        std::vector<int> nextStates;
+        int i = 0;
+        int lastAcceptPos = 0;
+        int lastAcceptState = -1;
+        curStates.push_back(starting);
+
+        int *listids = new int[nfa.length()];
+        for (int i=0; i<nfa.length(); i++)
+            listids[i] = -1;
+
+        for (int i=0; i<limit && str[i]!=0 && !curStates.empty(); i++){
+            char c = str[i];
+            for (int j=0; j<curStates.length(); j++){
+                int accept = isAccepting(curStates[j]);
+                if (accept > -1){
+                    lastAcceptPos = i;
+                    lastAcceptState = accept;
+                }
+
+                State *stateptr = nfa[curStates[j]];
+                if (stateptr->epsilon1 >= 0)
+                    addState(stateptr->epsilon1, curStates, listids, i);
+                if (stateptr->epsilon2 >= 0)
+                    addState(stateptr->epsilon2, curStates, listids, i);
+                if (stateptr->transitions[c])
+                    addState(stateptr->edge, nextStates, listids, i+1);
+            }
+            curStates.swap(nextStates);
+            nextStates.clear();
+        }
+
+        str = str[lastAcceptPos];
+        return lastAcceptState;
+    }
+
     ~BaseRegexp(){
         for (int i=0; i<nfa.size(); i++){
             delete[] nfa[i];
@@ -310,6 +355,13 @@ std::ostream& operator<<(std::ostream& os, const BaseRegexp& regexp){
 class Regexp: public BaseRegexp{
 private:
     int accepting;
+
+    int isAccepting(int state){
+        if (state == accepting)
+            return accepting;
+        return -1;
+    }
+    
 public:
     Regexp(std::string re){
         RegexpBuilder builder;
