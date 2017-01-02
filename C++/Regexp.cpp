@@ -1,5 +1,5 @@
 #include <vector>
-#include <string>
+#include <cstdlib>
 #include <bitset>
 #include <exception>
 #include <iostream>
@@ -14,10 +14,16 @@ namespace regexp{
     };
 }
 
-class RegexSyntaxError : public std::runtime_error{
-public:
-    RegexSyntaxError(int pos) : runtime_error("Regex Syntax error at position ")
-    {}
+class RegexSyntaxError : public std::exception{
+    char *str;
+public:    
+    RegexSyntaxError(int pos){
+        str = itoa(pos, str, 10);
+    }
+
+    const char *what(){
+        return str;
+    }
 };
 
 class BaseRegexp{
@@ -386,11 +392,7 @@ public:
 
     Regexp(char* re){
         RegexpBuilder builder;
-        try{
-            accepting = builder.build(re, this);
-        }
-        catch(RegexSyntaxError){
-        }
+        accepting = builder.build(re, this);
 
     }
     friend std::ostream& operator<<(std::ostream& os, const Regexp& regexp);
