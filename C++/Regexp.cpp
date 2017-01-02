@@ -27,12 +27,12 @@ protected:
 
     class RegexpBuilder{
     public:
-        std::string regexp;
+        char* regexp;
         int pos = 0;
         BaseRegexp *rePtr;
 
         bool notEnd(){
-            return pos < regexp.size();
+            return regexp[pos] != 0;
         }
         char next(char c){
             if (notEnd() && regexp[pos] == c){
@@ -261,7 +261,7 @@ protected:
         }
 
     public:
-        int build(std::string re, BaseRegexp *rp){
+        int build(char* re, BaseRegexp *rp){
             regexp = re;
             rePtr = rp;
             int start, end;
@@ -283,7 +283,7 @@ protected:
 
     virtual int isAccepting(int state) = 0;
 
-    int simulate(char& *str, int limit){
+    int simulate(char* &str){
         std::vector<int> curStates;
         std::vector<int> nextStates;
         int i = 0;
@@ -291,20 +291,20 @@ protected:
         int lastAcceptState = -1;
         curStates.push_back(starting);
 
-        int *listids = new int[nfa.length()];
-        for (int i=0; i<nfa.length(); i++)
+        int *listids = new int[nfa.size()];
+        for (int i=0; i<nfa.size(); i++)
             listids[i] = -1;
 
-        for (int i=0; i<limit && str[i]!=0 && !curStates.empty(); i++){
+        for (int i=0; !curStates.empty(); i++){
             char c = str[i];
-            for (int j=0; j<curStates.length(); j++){
+            for (int j=0; j<curStates.size(); j++){
                 int accept = isAccepting(curStates[j]);
                 if (accept > -1){
                     lastAcceptPos = i;
                     lastAcceptState = accept;
                 }
 
-                State *stateptr = nfa[curStates[j]];
+                regexp::State *stateptr = nfa[curStates[j]];
                 if (stateptr->epsilon1 >= 0)
                     addState(stateptr->epsilon1, curStates, listids, i);
                 if (stateptr->epsilon2 >= 0)
@@ -314,9 +314,11 @@ protected:
             }
             curStates.swap(nextStates);
             nextStates.clear();
+
+            if (str[i] == 0) break;
         }
 
-        str = str[lastAcceptPos];
+        str += lastAcceptPos;
         return lastAcceptState;
     }
 
@@ -361,9 +363,28 @@ private:
             return accepting;
         return -1;
     }
-    
+
 public:
-    Regexp(std::string re){
+    int match(char* str){
+        char *end = str;
+        int success = simulate(end);
+        if (success < 0)
+            return -1;
+        return end-str;
+    }
+
+    int search(char* str){
+        for (int i=0; str[i]!=0; i++){
+            char *end = str+i;
+            int success = simulate(end);
+            if (success >= 0){
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    Regexp(char* re){
         RegexpBuilder builder;
         try{
             accepting = builder.build(re, this);
@@ -382,5 +403,6 @@ std::ostream& operator<<(std::ostream& os, const Regexp& regexp){
 
 int main(int argc, char* argv[]){
     Regexp regex = Regexp(argv[1]);
-    std::cout << regex;    
+    std::cout << regex;
+    std::cout << regex.search(argv[2]);    
 }
