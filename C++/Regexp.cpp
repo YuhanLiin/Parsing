@@ -1,16 +1,30 @@
 #include <vector>
 #include <string>
-#include <utility>
+#include <bitset>
 #include <exception>
 #include <iostream>
 
-class BaseRegexp{
-private:
-    std::vector<int*> nfa;
-    int starting;
-    int accepting;
+namespace regexp{
+    const int NumOfChars = 256;
+    struct State{
+        std::bitset<regexp::NumOfChars> transitions;
+        int edge;
+        int epsilon1;
+        int epsilon2;
+    };
+}
 
+class RegexSyntaxError : public std::runtime_error{
+public:
+    RegexSyntaxError(int pos) : runtime_error("Regex Syntax error at position ")
+    {}
+};
+
+class BaseRegexp{
 protected:
+    std::vector< regexp::State* > nfa;
+    int starting;
+
     class RegexpBuilder{
     public:
         std::string regexp;
@@ -35,104 +49,109 @@ protected:
             return 0;
         }
         void error(){
-            throw std::runtime_error("Regex Syntax Error.");
+            throw RegexSyntaxError(pos);
         }
 
-        void updateFragment(int* transitions, int lower, int upper){
+        void updateFragment(std::bitset<regexp::NumOfChars>& transitions, int lower, int upper){
             for (int i=lower; i<=upper; i++){
-                transitions[i] = -2;
+                transitions[i] = 1;
             }
+
         }
         int push(){
             int statenum = rePtr->nfa.size();
-            rePtr->nfa.push_back(new int[258]);
-            for (int i=0; i<258; i++){
-                rePtr->nfa[statenum][i] = -1;
-            }
+            rePtr->nfa.push_back(new regexp::State);
+            rePtr->nfa[statenum]->transitions = std::bitset<regexp::NumOfChars>();
+            rePtr->nfa[statenum]->edge = -2;
+            rePtr->nfa[statenum]->epsilon1 = -1;
+            rePtr->nfa[statenum]->epsilon2 = -1;
             return statenum; 
         }
-        void concatenate(int left, int right){
-            for (int i=0; i<258; i++){
-                if (rePtr->nfa[left][i] == -2){
-                    rePtr->nfa[left][i] = right;
-                }
-            }
+        void alternate(int& startL, int& endL, int startR, int endR){
+            int root = push();
+            rePtr->nfa[root]->epsilon1 = startL;
+            rePtr->nfa[root]->epsilon2 = startR;
+            int closure = push();
+            concatenate(endL, closure);
+            concatenate(endR, closure);
+            rePtr->nfa[closure]->epsilon1 = -2;
+            startL = root;
+            endL = closure;
         }
-        std::pair<int,int> optional(int start, int end){
+        void concatenate(int left, int right){
+            regexp::State* lptr = rePtr->nfa[left];
+            if (lptr->edge == -2)
+                lptr->edge = right;
+            if (lptr->epsilon1 == -2)
+                lptr->epsilon1 = right;
+            if (lptr->epsilon2 == -2)
+                lptr->epsilon2 = right;
+        }
+        void optional(int& start, int& end){
             int newStart = push();
             int newEnd = push();
-            rePtr->nfa[newStart][257] = start;
-            rePtr->nfa[newStart][256] = newEnd;
+            rePtr->nfa[newStart]->epsilon2 = start;
+            rePtr->nfa[newStart]->epsilon1 = newEnd;
             concatenate(end, newEnd);
-            rePtr->nfa[newEnd][256] = -2;
-            return std::make_pair(newStart, newEnd);
+            rePtr->nfa[newEnd]->epsilon1 = -2;
+            start = newStart;
+            end = newEnd;
         }
-        std::pair<int,int> repeating(int start, int end){
+        void repeating(int& start, int& end){
             int newEnd = push();
-            rePtr->nfa[newEnd][257] = start;
-            rePtr->nfa[newEnd][256] = -2;
+            rePtr->nfa[newEnd]->epsilon2 = start;
+            rePtr->nfa[newEnd]->epsilon1 = -2;
             concatenate(end, newEnd);
-            return std::make_pair(start, newEnd);
+            end = newEnd;
         }
-        std::pair<int,int> kleene(int start, int end){
-            std::pair<int,int> se = repeating(start, end);
-            return std::make_pair(se.second, se.second);
+        void kleene(int& start, int& end){
+            repeating(start, end);
+            start = end;
         }
 
-        std::pair<int,int> parseRegexp(){
-            std::pair<int,int> startEndL = parseConcat();
+        void parseRegexp(int& startL, int& endL){
+            parseConcat(startL, endL);
             while (next('|')){
-                std::pair<int,int> startEndR = parseConcat();
-                int root = push();
-                rePtr->nfa[root][256] = startEndL.first;
-                rePtr->nfa[root][257] = startEndR.first;
-                int closure = push();
-                concatenate(startEndL.second, closure);
-                concatenate(startEndR.second, closure);
-                rePtr->nfa[closure][256] = -2;
-                startEndL = std::make_pair(root, closure);
+                int startR, endR;
+                parseConcat(startR, endR);
+                alternate(startL, endL, startR, endR);
             }
-            return startEndL;
         }
 
-        std::pair<int,int> parseConcat(){
-            std::pair<int,int> startEndL = parseUnary();
+        void parseConcat(int& startL, int& endL){
+            parseUnary(startL, endL);
             while (notEnd() && regexp[pos]!='|' && regexp[pos]!=')'){
-                std::pair<int,int> startEndR = parseUnary();
-                //std::cout << startEndL.second << ' ' << startEndR.first << '\n';
-                concatenate(startEndL.second, startEndR.first);
-                startEndL.second = startEndR.second;
+                int startR, endR;
+                parseUnary(startR, endR);
+                concatenate(endL, startR);
+                endL = endR;
             }
-            return startEndL;
         }
 
-        std::pair<int,int> parseUnary(){
-            std::pair<int,int> startEnd = parseValue();
+        void parseUnary(int& start, int& end){
+            parseValue(start, end);
             if (next('*')){
-                startEnd = kleene(startEnd.first, startEnd.second);
+                kleene(start, end);
             }
             else if (next('+')){
-                startEnd = repeating(startEnd.first, startEnd.second);
+                repeating(start, end);
             }
             else if (next('?')){
-                startEnd = optional(startEnd.first, startEnd.second);
+                optional(start, end);
             }
-            return startEnd;
         }
 
-        std::pair<int,int> parseValue(){
+        void parseValue(int& start, int& end){
             if (next('(')){
-                std::pair<int,int> se = parseRegexp();
+                parseRegexp(start, end);
                 if (!next(')')) error();
-                return se;
             }
             else{
-                int s;
                 if (next('['))
-                    s = parseSet();
+                    start = parseSet();
                 else
-                    s = parseChar();
-                return std::make_pair(s, s);
+                    start = parseChar();
+                end = start;
             }
         }
 
@@ -167,7 +186,7 @@ protected:
 
         int parseChar(){
             int start = push();
-            int* transition = rePtr->nfa[start];
+            std::bitset<regexp::NumOfChars>& transition = rePtr->nfa[start]->transitions;
             if (next('\\')){
                 parseSpecial(transition);
             }
@@ -177,14 +196,14 @@ protected:
             }
             else{
                 char c = parseC();
-                transition[c] = -2;
+                transition[c] = 1;
             }
             return start;
         }
 
         int parseSet(){
             int start = push();
-            int* transition = rePtr->nfa[start];
+            std::bitset<regexp::NumOfChars>& transition = rePtr->nfa[start]->transitions;
             bool inverse = false;
             if (next('^'))
                 inverse = true;
@@ -193,17 +212,12 @@ protected:
                 parseElem(transition);
             }
             if (inverse){
-                for (int i=0; i<258; i++){
-                    if (transition[i] == -2)
-                        transition[i] = -1;
-                    else
-                        transition[i] = -2;
-                }
+                transition.flip();
             }
             return start;
         }
 
-        void parseElem(int* transition){
+        void parseElem(std::bitset<regexp::NumOfChars>& transition){
             if (next('\\')){
                 parseSpecial(transition);
             }
@@ -217,15 +231,15 @@ protected:
                     char r = parseC();
                     updateFragment(transition, c, r);
                 }
-                else transition[c] = -2;
+                else transition[c] = 1;
             }
         }
 
-        void parseSpecial(int* transition){
+        void parseSpecial(std::bitset<regexp::NumOfChars>& transition){
             char c = next(1, 255);
             switch(c){
                 case 0:
-                    transition['\\'] = -2;
+                    transition['\\'] = 1;
                     break;
                 case 'd':
                     updateFragment(transition, '0', '9');
@@ -235,26 +249,27 @@ protected:
                     updateFragment(transition, '9'+1, 255);
                     break;
                 case 's':
-                    transition[' '] = -2;
+                    transition[' '] = 1;
                     break;
                 case 'S':
                     updateFragment(transition, 1, ' '-1);
                     updateFragment(transition, ' '+1, 255);
                     break;
                 default:
-                    transition[c] = -2;
+                    transition[c] = 1;
             }
         }
 
     public:
-        void build(std::string re, BaseRegexp *rp){
+        int build(std::string re, BaseRegexp *rp){
             regexp = re;
             rePtr = rp;
-            std::pair<int,int> startEnd = parseRegexp();
+            int start, end;
+            parseRegexp(start, end);
             int accepting = push();
-            concatenate(startEnd.second, accepting);
-            rePtr->starting = startEnd.first;
-            rePtr->accepting = accepting;
+            concatenate(end, accepting);
+            rePtr->starting = start;
+            return accepting;
         }
     };
     friend RegexpBuilder;
@@ -265,43 +280,53 @@ public:
             delete[] nfa[i];
         }
         starting = -1;
-        accepting = -1;
     }
 
     friend std::ostream& operator<<(std::ostream& os, const BaseRegexp& regexp);
 };
 
 std::ostream& operator<<(std::ostream& os, const BaseRegexp& regexp){
-        os << regexp.starting << ' ' << regexp.accepting << '\n';
-        for (int i=0; i<regexp.nfa.size(); i++){
-            os << i << " -> ";
-            for (int j=0; j<258; j++){
-                if (regexp.nfa[i][j] != -1){
-                    if (j==256 || j==257)
-                        os << "epsilon";
-                    else
-                        os << (char)j;
-                    os << ':' << regexp.nfa[i][j] << ' ';
-                }
+    for (int i=0; i<regexp.nfa.size(); i++){
+        os << i << " -> ";
+        regexp::State *stateptr = regexp.nfa[i];
+        if (stateptr->transitions.any()){
+            os << stateptr->edge << " : {";
+            for (int j=0; j<regexp::NumOfChars; j++){
+                if (stateptr->transitions[j] == 1)
+                    os << (char)j;
             }
-            os << '\n';
+            os << "} ";
         }
-        return os;
+        if (stateptr->epsilon1 >= 0)
+            os << "epsilon:" << stateptr->epsilon1 << ' ';
+        if (stateptr->epsilon2 >= 0)
+            os << "epsilon:" << stateptr->epsilon2 << ' ';
+        os << '\n';
     }
+    os << "Starting: " << regexp.starting << '\n';
+    return os;
+}
 
 class Regexp: public BaseRegexp{
+private:
+    int accepting;
 public:
     Regexp(std::string re){
         RegexpBuilder builder;
         try{
-            builder.build(re, this);
+            accepting = builder.build(re, this);
         }
-        catch(...){
-            std::cout << "Error at: " << builder.pos << '\n';
+        catch(RegexSyntaxError){
         }
 
     }
+    friend std::ostream& operator<<(std::ostream& os, const Regexp& regexp);
 };
+
+std::ostream& operator<<(std::ostream& os, const Regexp& regexp){
+    os << (const BaseRegexp&)regexp << "Accepting: " << regexp.accepting << '\n';
+    return os;
+}
 
 int main(int argc, char* argv[]){
     Regexp regex = Regexp(argv[1]);
