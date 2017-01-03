@@ -10,7 +10,7 @@
 // Namespace containing definitions exclusive to the Regexp module
 namespace regexp{
     // Number of ASCII character possible. Regexp alphabet size.
-    const int NumOfChars = 256;
+    const int NumOfChars = 128;
     // Represents states of an NFA. Edge value of -1 means it doesn't exist; -2 means a dangling edge.
     struct State{
         // Bitset deciding the characters used as transition for the state. 0 is no 1 is yes.  
@@ -54,11 +54,11 @@ protected:
         //Parser helper functions
         bool notEnd();
         char next(char c);
-        char next(int low, int high);
+        char next(char low, char high);
         void error();
         //Many of the functions below will "return" a regexp fragment by updating reference arguments
         //NFA construction helper functions
-        void updateFragment(std::bitset<regexp::NumOfChars>& transitions, int lower, int upper);
+        void updateFragment(std::bitset<regexp::NumOfChars>& transitions, char lower, char upper);
         int push();
         void alternate(int& startL, int& endL, int startR, int endR);
         void concatenate(int left, int right);

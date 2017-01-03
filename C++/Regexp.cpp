@@ -21,7 +21,7 @@ char BaseRegexp::RegexpBuilder::next(char c){
     return 0;
 }
 //Same thing as above, except the input is an ASCII range
-char BaseRegexp::RegexpBuilder::next(int low, int high){
+char BaseRegexp::RegexpBuilder::next(char low, char high){
     if (notEnd() && regexp[pos] >= low && regexp[pos] <= high){
         pos++;
         return regexp[pos-1];
@@ -36,7 +36,7 @@ void BaseRegexp::RegexpBuilder::error(){
 
 //Updates a state's transition bitset for a specific range of chars. 
 //Called when individual chars are parsed to set a state's transitions 
-void BaseRegexp::RegexpBuilder::updateFragment(std::bitset<regexp::NumOfChars>& transitions, int lower, int upper){
+void BaseRegexp::RegexpBuilder::updateFragment(std::bitset<regexp::NumOfChars>& transitions, char lower, char upper){
     for (int i=lower; i<=upper; i++){
         transitions[i] = 1;
     }
@@ -197,7 +197,7 @@ void BaseRegexp::RegexpBuilder::parseValue(int& start, int& end){
 
 //Parse a non-escaped character. Throw error for special characters and return the value otherwise
 char BaseRegexp::RegexpBuilder::parseC(){
-    char c = next(1,255);
+    char c = next(1,regexp::NumOfChars-1);
     switch(c){
         case 0:
             error();
@@ -237,7 +237,7 @@ int BaseRegexp::RegexpBuilder::parseChar(){
     //Update the transition for everything other than \n for special character .
     else if (next('.')){
         updateFragment(transition, 1, '\n');
-        updateFragment(transition, '\n'+1, 255);
+        updateFragment(transition, '\n'+1, regexp::NumOfChars-1);
     }
     //Otherwise, parse with unescaped semantics
     else{
@@ -276,7 +276,7 @@ void BaseRegexp::RegexpBuilder::parseElem(std::bitset<regexp::NumOfChars>& trans
     //Same for special char .
     else if (next('.')){
         updateFragment(transition, 1, '\n');
-        updateFragment(transition, '\n'+1, 255);
+        updateFragment(transition, '\n'+1, regexp::NumOfChars-1);
     }
     //None-special chars are parsed as ranges or single chars based on whether they are followed by -
     else{
@@ -291,7 +291,7 @@ void BaseRegexp::RegexpBuilder::parseElem(std::bitset<regexp::NumOfChars>& trans
 
 //Parses an escaped char using different semantics 
 void BaseRegexp::RegexpBuilder::parseSpecial(std::bitset<regexp::NumOfChars>& transition){
-    char c = next(1, 255);
+    char c = next(1, regexp::NumOfChars-1);
     switch(c){
         //If nothing follows, simply process the backslash as normal char
         case 0:
@@ -304,7 +304,7 @@ void BaseRegexp::RegexpBuilder::parseSpecial(std::bitset<regexp::NumOfChars>& tr
         //Turn on all non-numbers
         case 'D':
             updateFragment(transition, 1, '0'-1);
-            updateFragment(transition, '9'+1, 255);
+            updateFragment(transition, '9'+1, regexp::NumOfChars-1);
             break;
         //Turn on space
         case 's':
@@ -313,7 +313,7 @@ void BaseRegexp::RegexpBuilder::parseSpecial(std::bitset<regexp::NumOfChars>& tr
         //Turn on every char other than space
         case 'S':
             updateFragment(transition, 1, ' '-1);
-            updateFragment(transition, ' '+1, 255);
+            updateFragment(transition, ' '+1, regexp::NumOfChars-1);
             break;
         //Otherwise, treat it as a normal char
         default:
@@ -560,12 +560,12 @@ std::ostream& operator<<(std::ostream& os, const Token& token){
 // int main(int argc, char* argv[]){
 //     Regexp regexp = Regexp();
 //     std::cout << regexp << regexp.match(argv[2]);
-    // Lexer lexer = Lexer(argv+1, 2, 0);
-    // std::cout << lexer;
-    // std::vector<Token> tokens;
-    // int good = lexer.lex(argv[3], tokens);
-    // for (int i=0; i<tokens.size(); i++){
-    //     std::cout << tokens[i] << ' ' ;
-    // }
-    // std::cout << good;
+//     Lexer lexer = Lexer(argv+1, 2, 0);
+//     std::cout << lexer;
+//     std::vector<Token> tokens;
+//     int good = lexer.lex(argv[3], tokens);
+//     for (int i=0; i<tokens.size(); i++){
+//         std::cout << tokens[i] << ' ' ;
+//     }
+//     std::cout << good;
 // }
