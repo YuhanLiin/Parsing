@@ -26,6 +26,18 @@ public:
     }
 };
 
+class LexerError : public std::exception{
+    char *str;
+public:    
+    LexerError(int pos){
+        str = itoa(pos, str, 10);
+    }
+
+    const char *what(){
+        return str;
+    }
+};
+
 class BaseRegexp{
 protected:
     std::vector< regexp::State* > nfa;
@@ -440,6 +452,15 @@ public:
         delete[] acceptList;
     }
 
+    void lex(char* input, std::vector<int> &tokens){
+        char *curpos = input;
+        while (*curpos != 0){
+            int token = simulate(curpos);
+            if (token == -1) throw LexerError(curpos-input);
+            tokens.push_back(token);
+        }
+    }
+
     ~Lexer(){
         delete[] acceptTable;
     }
@@ -459,4 +480,9 @@ std::ostream& operator<<(std::ostream& os, const Lexer& regexp){
 int main(int argc, char* argv[]){
     Lexer lexer = Lexer(argv+1, 5);
     std::cout << lexer;
+    std::vector<int> tokens;
+    lexer.lex(argv[6], tokens);
+    for (int i=0; i<tokens.size(); i++){
+        std::cout << tokens[i] << ' ' ;
+    }
 }
