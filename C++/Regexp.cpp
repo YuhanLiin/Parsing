@@ -97,6 +97,11 @@ void BaseRegexp::RegexpBuilder::parseRegexp(int& startL, int& endL){
 }
 
 void BaseRegexp::RegexpBuilder::parseConcat(int& startL, int& endL){
+    if (!notEnd() || regexp[pos]=='|' || regexp[pos]==')'){
+        startL = endL = push();
+        rePtr->nfa[startL]->epsilon1 = -2;
+        return;
+    }
     parseUnary(startL, endL);
     while (notEnd() && regexp[pos]!='|' && regexp[pos]!=')'){
         int startR, endR;
@@ -354,6 +359,11 @@ Regexp::Regexp(char* re){
 
 }
 
+Regexp::Regexp(){
+    RegexpBuilder builder;
+    builder.build("", this, starting, accepting);  
+}
+
 std::ostream& operator<<(std::ostream& os, const Regexp& regexp){
     os << (const BaseRegexp&)regexp << "Accepting: " << regexp.accepting << '\n';
     return os;
@@ -431,12 +441,14 @@ std::ostream& operator<<(std::ostream& os, const Token& token){
 }
 
 int main(int argc, char* argv[]){
-    Lexer lexer = Lexer(argv+1, 2, 0);
-    std::cout << lexer;
-    std::vector<Token> tokens;
-    int good = lexer.lex(argv[3], tokens);
-    for (int i=0; i<tokens.size(); i++){
-        std::cout << tokens[i] << ' ' ;
-    }
-    std::cout << good;
+    Regexp regexp = Regexp();
+    std::cout << regexp << regexp.match(argv[2]);
+    // Lexer lexer = Lexer(argv+1, 2, 0);
+    // std::cout << lexer;
+    // std::vector<Token> tokens;
+    // int good = lexer.lex(argv[3], tokens);
+    // for (int i=0; i<tokens.size(); i++){
+    //     std::cout << tokens[i] << ' ' ;
+    // }
+    // std::cout << good;
 }
