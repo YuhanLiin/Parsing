@@ -391,11 +391,14 @@ Lexer::Lexer(char* regexplist[], int len){
     delete[] acceptList;
 }
 
-bool Lexer::lex(char* &curpos, std::vector<int> &tokens){
+bool Lexer::lex(char* &input, std::vector<Token> &tokens){
+    char* curpos = input;
     while (*curpos != 0){
-        int token = simulate(curpos);
-        if (token == -1) return 0;
-        tokens.push_back(token);
+        int start = curpos-input;
+        int tokenNum = simulate(curpos);
+        int end = curpos-input;
+        if (tokenNum == -1) return 0;
+        tokens.push_back({tokenNum, start, end});
     }
     return 1;
 }
@@ -414,10 +417,15 @@ std::ostream& operator<<(std::ostream& os, const Lexer& regexp){
     return os;
 }
 
+std::ostream& operator<<(std::ostream& os, const Token& token){
+    os << token.id << "->" << token.start << ':' << token.end;
+    return os;
+}
+
 int main(int argc, char* argv[]){
     Lexer lexer = Lexer(argv+1, 5);
     std::cout << lexer;
-    std::vector<int> tokens;
+    std::vector<Token> tokens;
     lexer.lex(argv[6], tokens);
     for (int i=0; i<tokens.size(); i++){
         std::cout << tokens[i] << ' ' ;

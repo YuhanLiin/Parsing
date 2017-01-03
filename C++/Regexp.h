@@ -82,7 +82,7 @@ protected:
     virtual int isAccepting(int state) = 0;
     int simulate(char* &str);
     //Destructor
-    ~BaseRegexp()
+    ~BaseRegexp();
     friend RegexpBuilder;
     friend std::ostream& operator<<(std::ostream& os, const BaseRegexp& regexp);
 };
@@ -92,6 +92,7 @@ class Regexp: public BaseRegexp{
 private:
     //Single accepting state of the regexp
     int accepting;
+    int isAccepting(int state);
 
 public:
     //Match and search a string for the constructed regexp by simulating NFA
@@ -102,6 +103,17 @@ public:
     friend std::ostream& operator<<(std::ostream& os, const Regexp& regexp);
 };
 
+// Representation of a lexical token
+struct Token{
+    // The numbering of the regex this token was matched to
+    int id;
+    // Position in the string the token started
+    int start;
+    // Position right after token ended
+    int end;
+};
+std::ostream& operator<<(std::ostream& os, const Token& token);
+
 // Class for storing a sequence of regexps as a large NFA with multiple acceptances in order to perform efficient lexical analysis
 // with token stream as output
 class Lexer : public BaseRegexp{
@@ -109,11 +121,13 @@ private:
     //Acceptances represented by a table indexed by NFA state numbers. 
     //Contents represent the number of the regexp accepted by each state. -1 means no accept. 
     int* acceptTable;
+    int isAccepting(int state);
 
+public:
     //Constructor takes array of regexps and builds NFA.
     Lexer(char* regexplist[], int len);
     //Performs lexical analysis and returns success status and token list 
-    bool lex(char* &curpos, std::vector<int> &tokens);
+    bool lex(char* &curpos, std::vector<Token> &tokens);
     ~Lexer();
     friend std::ostream& operator<<(std::ostream& os, const Lexer& regexp);
 };
