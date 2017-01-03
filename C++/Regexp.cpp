@@ -363,7 +363,7 @@ int Lexer::isAccepting(int state){
     return acceptTable[state];
 }
 
-Lexer::Lexer(char* regexplist[], int len){
+Lexer::Lexer(char* regexplist[], int len, int ignoreNum){
     if (len == 0){
         acceptTable = new int[0];
         return;
@@ -389,6 +389,7 @@ Lexer::Lexer(char* regexplist[], int len){
         acceptTable[acceptList[i]] = i;
 
     delete[] acceptList;
+    ignore = ignoreNum;
 }
 
 bool Lexer::lex(char* &input, std::vector<Token> &tokens){
@@ -397,6 +398,7 @@ bool Lexer::lex(char* &input, std::vector<Token> &tokens){
         int start = curpos-input;
         int tokenNum = simulate(curpos);
         int end = curpos-input;
+        if (tokenNum == ignore) continue;
         if (tokenNum == -1) return 0;
         tokens.push_back({tokenNum, start, end});
     }
@@ -423,7 +425,7 @@ std::ostream& operator<<(std::ostream& os, const Token& token){
 }
 
 int main(int argc, char* argv[]){
-    Lexer lexer = Lexer(argv+1, 5);
+    Lexer lexer = Lexer(argv+1, 5, 0);
     std::cout << lexer;
     std::vector<Token> tokens;
     lexer.lex(argv[6], tokens);

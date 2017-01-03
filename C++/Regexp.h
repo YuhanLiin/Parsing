@@ -121,11 +121,14 @@ private:
     //Acceptances represented by a table indexed by NFA state numbers. 
     //Contents represent the number of the regexp accepted by each state. -1 means no accept. 
     int* acceptTable;
+    //Specifies the number of the one regex in the lexer whose output token is to be ignored
+    int ignore;
+
     int isAccepting(int state);
 
 public:
     //Constructor takes array of regexps and builds NFA.
-    Lexer(char* regexplist[], int len);
+    Lexer(char* regexplist[], int len, int ignore);
     //Performs lexical analysis and returns success status and token list 
     bool lex(char* &curpos, std::vector<Token> &tokens);
     ~Lexer();
