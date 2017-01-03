@@ -440,9 +440,9 @@ std::ostream& operator<<(std::ostream& os, const Token& token){
     return os;
 }
 
-int main(int argc, char* argv[]){
-    Regexp regexp = Regexp();
-    std::cout << regexp << regexp.match(argv[2]);
+// int main(int argc, char* argv[]){
+//     Regexp regexp = Regexp();
+//     std::cout << regexp << regexp.match(argv[2]);
     // Lexer lexer = Lexer(argv+1, 2, 0);
     // std::cout << lexer;
     // std::vector<Token> tokens;
@@ -451,4 +451,4 @@ int main(int argc, char* argv[]){
     //     std::cout << tokens[i] << ' ' ;
     // }
     // std::cout << good;
-}
+// }
