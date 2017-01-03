@@ -56,6 +56,7 @@ protected:
         char next(char c);
         char next(int low, int high);
         void error();
+        //Many of the functions below will "return" a regexp fragment by updating reference arguments
         //NFA construction helper functions
         void updateFragment(std::bitset<regexp::NumOfChars>& transitions, int lower, int upper);
         int push();
