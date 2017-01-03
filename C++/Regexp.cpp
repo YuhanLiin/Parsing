@@ -392,14 +392,20 @@ Lexer::Lexer(char* regexplist[], int len, int ignoreNum){
     ignore = ignoreNum;
 }
 
-bool Lexer::lex(char* &input, std::vector<Token> &tokens){
+int Lexer::lex(char* input, std::vector<Token> &tokens){
     char* curpos = input;
     while (*curpos != 0){
+        //Start position of token
         int start = curpos-input;
+        //Run simulation, which advances the curpos pointer and produces the token id
         int tokenNum = simulate(curpos);
+        //End position of token
         int end = curpos-input;
+        //Lexer fails if simulation fails or an empty token is produced
+        if (tokenNum == -1 || start == end) return input-curpos;
+        //If the token is ignored. skip it
         if (tokenNum == ignore) continue;
-        if (tokenNum == -1) return 0;
+        //Push token onto stack
         tokens.push_back({tokenNum, start, end});
     }
     return 1;
@@ -425,11 +431,12 @@ std::ostream& operator<<(std::ostream& os, const Token& token){
 }
 
 int main(int argc, char* argv[]){
-    Lexer lexer = Lexer(argv+1, 5, 0);
+    Lexer lexer = Lexer(argv+1, 2, 0);
     std::cout << lexer;
     std::vector<Token> tokens;
-    lexer.lex(argv[6], tokens);
+    int good = lexer.lex(argv[3], tokens);
     for (int i=0; i<tokens.size(); i++){
         std::cout << tokens[i] << ' ' ;
     }
+    std::cout << good;
 }

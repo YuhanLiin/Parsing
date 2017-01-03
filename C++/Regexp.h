@@ -17,8 +17,9 @@ namespace regexp{
         std::bitset<regexp::NumOfChars> transitions;
         // The destination of the edge that uses characters as transition. Defaults to -2.
         int edge;
-        // 2 epsilon edges. Defaults to -1.
+        // Epsilon edge dedicated to concatenations
         int epsilon1;
+        // Epsilon edge dedicated to unary operations
         int epsilon2;
     };
 }
@@ -130,7 +131,7 @@ public:
     //Constructor takes array of regexps and builds NFA.
     Lexer(char* regexplist[], int len, int ignore);
     //Performs lexical analysis and returns success status and token list 
-    bool lex(char* &curpos, std::vector<Token> &tokens);
+    int lex(char* curpos, std::vector<Token> &tokens);
     ~Lexer();
     friend std::ostream& operator<<(std::ostream& os, const Lexer& regexp);
 };
