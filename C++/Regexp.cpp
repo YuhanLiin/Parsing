@@ -1,35 +1,9 @@
-#include <vector>
-#include <cstdlib>
-#include <bitset>
-#include <exception>
-#include <iostream>
-
-namespace regexp{
-    const int NumOfChars = 256;
-    struct State{
-        std::bitset<regexp::NumOfChars> transitions;
-        int edge;
-        int epsilon1;
-        int epsilon2;
-    };
-}
+#include "Regexp.h"
 
 class RegexSyntaxError : public std::exception{
     char *str;
 public:    
     RegexSyntaxError(int pos){
-        str = itoa(pos, str, 10);
-    }
-
-    const char *what(){
-        return str;
-    }
-};
-
-class LexerError : public std::exception{
-    char *str;
-public:    
-    LexerError(int pos){
         str = itoa(pos, str, 10);
     }
 
@@ -452,13 +426,13 @@ public:
         delete[] acceptList;
     }
 
-    void lex(char* input, std::vector<int> &tokens){
-        char *curpos = input;
+    bool lex(char* &curpos, std::vector<int> &tokens){
         while (*curpos != 0){
             int token = simulate(curpos);
-            if (token == -1) throw LexerError(curpos-input);
+            if (token == -1) return 0;
             tokens.push_back(token);
         }
+        return 1;
     }
 
     ~Lexer(){
