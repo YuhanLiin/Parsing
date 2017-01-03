@@ -55,6 +55,7 @@ protected:
             return 0;
         }
         void error(){
+            std::cerr << "Regex error at position " << pos;
             throw RegexSyntaxError(pos);
         }
 
@@ -267,15 +268,13 @@ protected:
         }
 
     public:
-        int build(char* re, BaseRegexp *rp){
+        void build(char* re, BaseRegexp *rp, int &start, int &accept){
             regexp = re;
             rePtr = rp;
-            int start, end;
+            int end;
             parseRegexp(start, end);
-            int accepting = push();
-            concatenate(end, accepting);
-            rePtr->starting = start;
-            return accepting;
+            accept = push();
+            concatenate(end, accept);
         }
     };
     friend RegexpBuilder;
@@ -324,6 +323,7 @@ protected:
             if (str[i] == 0) break;
         }
 
+        delete[] listids;
         str += lastAcceptPos;
         return lastAcceptState;
     }
@@ -392,7 +392,7 @@ public:
 
     Regexp(char* re){
         RegexpBuilder builder;
-        accepting = builder.build(re, this);
+        builder.build(re, this, starting, accepting);
 
     }
     friend std::ostream& operator<<(std::ostream& os, const Regexp& regexp);
@@ -403,8 +403,60 @@ std::ostream& operator<<(std::ostream& os, const Regexp& regexp){
     return os;
 }
 
+class Lexer : public BaseRegexp{
+private:
+    int* acceptTable;
+
+    int isAccepting(int state){
+        return acceptTable[state];
+    }
+
+public:
+    Lexer(char* regexplist[], int len){
+        if (len == 0){
+            acceptTable = new int[0];
+            return;
+        }
+
+        int* acceptList = new int[len];
+        RegexpBuilder builder;
+        builder.build(regexplist[0], this, starting, acceptList[0]);
+        for (int i=1; i<len; i++){
+            int startR, acceptR;
+            RegexpBuilder builder;
+            builder.build(regexplist[i], this, startR, acceptList[i]);
+            acceptR = acceptList[i];
+            builder.alternate(startR, acceptR, starting, acceptList[i-1]);
+            nfa.pop_back();
+            starting = startR;
+        }
+
+        acceptTable = new int[nfa.size()];
+        for (int i=0; i<nfa.size(); i++)
+            acceptTable[i] = -1;
+        for (int i=0; i<len; i++)
+            acceptTable[acceptList[i]] = i;
+
+        delete[] acceptList;
+    }
+
+    ~Lexer(){
+        delete[] acceptTable;
+    }
+    friend std::ostream& operator<<(std::ostream& os, const Lexer& regexp);
+};
+
+std::ostream& operator<<(std::ostream& os, const Lexer& regexp){
+    os << (const BaseRegexp&)regexp << "Accepting: ";
+    for (int i = 0; i<regexp.nfa.size(); i++){
+        if (regexp.acceptTable[i] >= 0)
+            os << i << "->t" << regexp.acceptTable[i] << ' ';
+    }
+    os << '\n';
+    return os;
+}
+
 int main(int argc, char* argv[]){
-    Regexp regex = Regexp(argv[1]);
-    std::cout << regex;
-    std::cout << regex.search(argv[2]);    
+    Lexer lexer = Lexer(argv+1, 5);
+    std::cout << lexer;
 }
