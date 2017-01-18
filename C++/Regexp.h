@@ -7,14 +7,15 @@
 #include <exception>
 #include <iostream>
 
+// Number of ASCII character possible. Regexp alphabet size.
+const int NumOfChars = 128;
+
 // Namespace containing definitions exclusive to the Regexp module
-namespace regexp{
-    // Number of ASCII character possible. Regexp alphabet size.
-    const int NumOfChars = 128;
+namespace regexp{    
     // Represents states of an NFA. Edge value of -1 means it doesn't exist; -2 means a dangling edge.
     struct State{
         // Bitset deciding the characters used as transition for the state. 0 is no 1 is yes.  
-        std::bitset<regexp::NumOfChars> transitions;
+        std::bitset<NumOfChars> transitions;
         // The destination of the edge that uses characters as transition. Defaults to -2.
         int edge;
         // Epsilon edge dedicated to concatenations
@@ -58,7 +59,7 @@ protected:
         void error();
         //Many of the functions below will "return" a regexp fragment by updating reference arguments
         //NFA construction helper functions
-        void updateFragment(std::bitset<regexp::NumOfChars>& transitions, char lower, char upper);
+        void updateFragment(std::bitset<NumOfChars>& transitions, char lower, char upper);
         int push();
         void alternate(int& startL, int& endL, int startR, int endR);
         void concatenate(int left, int right);
@@ -73,8 +74,8 @@ protected:
         char parseC();
         int parseChar();
         int parseSet();
-        void parseElem(std::bitset<regexp::NumOfChars>& transition);
-        void parseSpecial(std::bitset<regexp::NumOfChars>& transition);
+        void parseElem(std::bitset<NumOfChars>& transition);
+        void parseSpecial(std::bitset<NumOfChars>& transition);
         //Runs parser/builder
         void build(char* re, BaseRegexp *rp, int &start, int &accept);
     };

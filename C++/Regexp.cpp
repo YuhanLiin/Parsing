@@ -36,7 +36,7 @@ void BaseRegexp::RegexpBuilder::error(){
 
 //Updates a state's transition bitset for a specific range of chars. 
 //Called when individual chars are parsed to set a state's transitions 
-void BaseRegexp::RegexpBuilder::updateFragment(std::bitset<regexp::NumOfChars>& transitions, char lower, char upper){
+void BaseRegexp::RegexpBuilder::updateFragment(std::bitset<NumOfChars>& transitions, char lower, char upper){
     for (int i=lower; i<=upper; i++){
         transitions[i] = 1;
     }
@@ -47,7 +47,7 @@ int BaseRegexp::RegexpBuilder::push(){
     int statenum = rePtr->nfa.size();
     rePtr->nfa.push_back(new regexp::State);
     //Sets default values of new state
-    rePtr->nfa[statenum]->transitions = std::bitset<regexp::NumOfChars>();
+    rePtr->nfa[statenum]->transitions = std::bitset<NumOfChars>();
     rePtr->nfa[statenum]->edge = -2; //The char edge will always be dangling. It will be invalidated if the transition bitset is 0
     rePtr->nfa[statenum]->epsilon1 = -1; //Epsilon edges default to -1 and will be turned on manually
     rePtr->nfa[statenum]->epsilon2 = -1;
@@ -197,7 +197,7 @@ void BaseRegexp::RegexpBuilder::parseValue(int& start, int& end){
 
 //Parse a non-escaped character. Throw error for special characters and return the value otherwise
 char BaseRegexp::RegexpBuilder::parseC(){
-    char c = next(1,regexp::NumOfChars-1);
+    char c = next(1,NumOfChars-1);
     switch(c){
         case 0:
             error();
@@ -229,7 +229,7 @@ char BaseRegexp::RegexpBuilder::parseC(){
 int BaseRegexp::RegexpBuilder::parseChar(){
     //Push a new state representing the char and prepare to update its transitions
     int start = push();
-    std::bitset<regexp::NumOfChars>& transition = rePtr->nfa[start]->transitions;
+    std::bitset<NumOfChars>& transition = rePtr->nfa[start]->transitions;
     //If \ is encountered, the next character will be parsed with escaped semantics
     if (next('\\')){
         parseSpecial(transition);
@@ -237,7 +237,7 @@ int BaseRegexp::RegexpBuilder::parseChar(){
     //Update the transition for everything other than \n for special character .
     else if (next('.')){
         updateFragment(transition, 1, '\n');
-        updateFragment(transition, '\n'+1, regexp::NumOfChars-1);
+        updateFragment(transition, '\n'+1, NumOfChars-1);
     }
     //Otherwise, parse with unescaped semantics
     else{
@@ -250,7 +250,7 @@ int BaseRegexp::RegexpBuilder::parseChar(){
 //Parse a single-state set and returns state numbers
 int BaseRegexp::RegexpBuilder::parseSet(){
     int start = push();
-    std::bitset<regexp::NumOfChars>& transition = rePtr->nfa[start]->transitions;
+    std::bitset<NumOfChars>& transition = rePtr->nfa[start]->transitions;
     //Set the inverse flag according to the optional ^ 
     bool inverse = false;
     if (next('^'))
@@ -268,7 +268,7 @@ int BaseRegexp::RegexpBuilder::parseSet(){
 }
 
 //Parse an element within a single-state set and updates the transition bitset
-void BaseRegexp::RegexpBuilder::parseElem(std::bitset<regexp::NumOfChars>& transition){
+void BaseRegexp::RegexpBuilder::parseElem(std::bitset<NumOfChars>& transition){
     //Escaped chars are parsed as a single char, since they cannot form ranges 
     if (next('\\')){
         parseSpecial(transition);
@@ -276,7 +276,7 @@ void BaseRegexp::RegexpBuilder::parseElem(std::bitset<regexp::NumOfChars>& trans
     //Same for special char .
     else if (next('.')){
         updateFragment(transition, 1, '\n');
-        updateFragment(transition, '\n'+1, regexp::NumOfChars-1);
+        updateFragment(transition, '\n'+1, NumOfChars-1);
     }
     //None-special chars are parsed as ranges or single chars based on whether they are followed by -
     else{
@@ -290,8 +290,8 @@ void BaseRegexp::RegexpBuilder::parseElem(std::bitset<regexp::NumOfChars>& trans
 }
 
 //Parses an escaped char using different semantics 
-void BaseRegexp::RegexpBuilder::parseSpecial(std::bitset<regexp::NumOfChars>& transition){
-    char c = next(1, regexp::NumOfChars-1);
+void BaseRegexp::RegexpBuilder::parseSpecial(std::bitset<NumOfChars>& transition){
+    char c = next(1, NumOfChars-1);
     switch(c){
         //If nothing follows, simply process the backslash as normal char
         case 0:
@@ -304,7 +304,7 @@ void BaseRegexp::RegexpBuilder::parseSpecial(std::bitset<regexp::NumOfChars>& tr
         //Turn on all non-numbers
         case 'D':
             updateFragment(transition, 1, '0'-1);
-            updateFragment(transition, '9'+1, regexp::NumOfChars-1);
+            updateFragment(transition, '9'+1, NumOfChars-1);
             break;
         //Turn on space
         case 's':
@@ -313,7 +313,7 @@ void BaseRegexp::RegexpBuilder::parseSpecial(std::bitset<regexp::NumOfChars>& tr
         //Turn on every char other than space
         case 'S':
             updateFragment(transition, 1, ' '-1);
-            updateFragment(transition, ' '+1, regexp::NumOfChars-1);
+            updateFragment(transition, ' '+1, NumOfChars-1);
             break;
         //Otherwise, treat it as a normal char
         default:
@@ -408,7 +408,7 @@ std::ostream& operator<<(std::ostream& os, const BaseRegexp& regexp){
         regexp::State *stateptr = regexp.nfa[i];
         if (stateptr->transitions.any()){
             os << stateptr->edge << " : {";
-            for (int j=0; j<regexp::NumOfChars; j++){
+            for (int j=0; j<NumOfChars; j++){
                 if (stateptr->transitions[j] == 1)
                     os << (char)j;
             }
