@@ -479,8 +479,8 @@ int Lexer::isAccepting(int state){
     return acceptTable[state];
 }
 
-//Lexer builds multiple regexps into a large NFA with multiple accepts. Can also specify a regexp to ignore
-Lexer::Lexer(char* regexplist[], int len, int ignoreNum=-1){
+//Lexer builds multiple regexps into a large NFA with multiple accepts
+Lexer::Lexer(char* regexplist[], int len, int newlineToken=-1){
     //Invalid construction for empty regexp list
     if (len == 0){
         //Offset destructor
@@ -513,27 +513,33 @@ Lexer::Lexer(char* regexplist[], int len, int ignoreNum=-1){
     for (int i=0; i<len; i++)
         acceptTable[acceptList[i]] = i;
 
+    this->newlineToken = newlineToken;
     delete[] acceptList;
-    ignore = ignoreNum;
 }
 
-int Lexer::lex(char* input, std::vector<Token> &tokens){
+//Parses the next token in the input and stores its info. Returns pointer to char after end of token
+char* Lexer::lex(char* input){
     char* curpos = input;
-    while (*curpos != 0){
-        //Start position of token
-        int start = curpos-input;
-        //Run simulation, which advances the curpos pointer and produces the token id
-        int tokenNum = simulate(curpos);
-        //End position of token
-        int end = curpos-input;
-        //Lexer fails if simulation fails or an empty token is produced
-        if (tokenNum == -1 || start == end) return input-curpos;
-        //If the token is ignored. skip it
-        if (tokenNum == ignore) continue;
-        //Push token onto stack
-        tokens.push_back({tokenNum, start, end});
+    //Run simulation, which advances the curpos pointer and produces the token id
+    tokenID = simulate(curpos);
+    if (tokenID == newlineToken){
+        tokenLine++;
+        tokenCol = 1;
     }
-    return 1;
+    else{
+        tokenCol += curpos-input;
+    }
+    return curpos;
+}
+
+void Lexer::reset(){
+    tokenLine = 1;
+    tokenCol = 1;
+    tokenID = -1;
+}
+
+bool Lexer::good(){
+    return (tokenID > -1);
 }
 
 Lexer::~Lexer(){
@@ -551,21 +557,9 @@ std::ostream& operator<<(std::ostream& os, const Lexer& regexp){
     return os;
 }
 
-//Token cout overload prints all members
-std::ostream& operator<<(std::ostream& os, const Token& token){
-    os << token.id << "->" << token.start << ':' << token.end;
-    return os;
-}
-
 // int main(int argc, char* argv[]){
-//     Regexp regexp = Regexp();
-//     std::cout << regexp << regexp.match(argv[2]);
 //     Lexer lexer = Lexer(argv+1, 2, 0);
 //     std::cout << lexer;
-//     std::vector<Token> tokens;
-//     int good = lexer.lex(argv[3], tokens);
-//     for (int i=0; i<tokens.size(); i++){
-//         std::cout << tokens[i] << ' ' ;
-//     }
-//     std::cout << good;
+//     int location = lexer.lex(argv[3]) - argv[3];
+//     std::cout << location << ' ' << lexer.tokenLine << ' ' << lexer.tokenCol << ' ' << lexer.tokenID;
 // }

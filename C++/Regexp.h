@@ -106,17 +106,6 @@ public:
     friend std::ostream& operator<<(std::ostream& os, const Regexp& regexp);
 };
 
-// Representation of a lexical token
-struct Token{
-    // The numbering of the regex this token was matched to
-    int id;
-    // Position in the string the token started
-    int start;
-    // Position right after token ended
-    int end;
-};
-std::ostream& operator<<(std::ostream& os, const Token& token);
-
 // Class for storing a sequence of regexps as a large NFA with multiple acceptances in order to perform efficient lexical analysis
 // with token stream as output
 class Lexer : public BaseRegexp{
@@ -125,17 +114,25 @@ private:
     //Contents represent the number of the regexp accepted by each state. -1 means no accept. 
     int* acceptTable;
     //Specifies the number of the one regex in the lexer whose output token is to be ignored
-    int ignore;
-
+    int newlineToken;
     int isAccepting(int state);
 
 public:
     //Constructor takes array of regexps and builds NFA.
-    Lexer(char* regexplist[], int len, int ignore);
-    //Performs lexical analysis and returns success status and token list 
-    int lex(char* curpos, std::vector<Token> &tokens);
+    Lexer(char* regexplist[], int len, int newlineToken);
+    //Performs lexical analysis by processing the next token in the string and returns pointer to the char after the end of the token
+    char* Lexer::lex(char* input);
     ~Lexer();
+    //Resets token variables
+    void reset();
+    //Checks if currently parsed token is valid via tokenID
+    bool good();
     friend std::ostream& operator<<(std::ostream& os, const Lexer& regexp);
+
+    //The line number, column number, and the regexp number of the current token
+    int tokenLine = 1;
+    int tokenCol = 1;
+    int tokenID = -1;
 };
 
 
