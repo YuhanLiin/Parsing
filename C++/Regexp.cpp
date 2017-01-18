@@ -442,13 +442,14 @@ int Regexp::match(char* str){
     return end-str;
 }
 
-//Runs simulation thru each position of the input to look for matches. Returns start position of first match, -1 if no match
-int Regexp::search(char* str){
+//Runs simulation thru each position of the input to look for matches and sets input ptr to start of match. Returns # of chars match, -1 if no match
+int Regexp::search(char* &str){
     for (int i=0; str[i]!=0; i++){
         char *end = str+i;
         int success = simulate(end);
         if (success >= 0){
-            return i;
+            str += i;
+            return end - str;
         }
     }
     return -1;

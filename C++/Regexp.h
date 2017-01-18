@@ -100,7 +100,7 @@ private:
 public:
     //Match and search a string for the constructed regexp by simulating NFA
     int match(char* str);
-    int search(char* str);
+    int search(char* &str);
     //Constructors. Builds NFA
     Regexp(char* re);
     Regexp();
