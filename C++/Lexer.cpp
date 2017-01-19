@@ -83,9 +83,9 @@ std::ostream& operator<<(std::ostream& os, const Lexer& regexp){
     return os;
 }
 
-int main(int argc, char* argv[]){
-    Lexer lexer = Lexer(argv+1, 2, 0);
-    std::cout << lexer;
-    int location = lexer.lex(argv[3]) - argv[3];
-    std::cout << location << ' ' << lexer.tokenLine << ' ' << lexer.tokenCol << ' ' << lexer.tokenID;
-}
+// int main(int argc, char* argv[]){
+//     Lexer lexer = Lexer(argv+1, 2, 0);
+//     std::cout << lexer;
+//     int location = lexer.lex(argv[3]) - argv[3];
+//     std::cout << location << ' ' << lexer.tokenLine << ' ' << lexer.tokenCol << ' ' << lexer.tokenID;
+// }

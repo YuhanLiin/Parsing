@@ -366,8 +366,9 @@ int BaseRegexp::simulate(char* &str){
         //Loop thru each current state
         for (int j=0; j<curStates.size(); j++){
             int accept = isAccepting(curStates[j]);
-            //If the state is accepting, then update the acceptance variables
-            if (accept > -1){
+            //If the state is the first accepting state at this char, then update the acceptance variables
+            //Allow update regardless of i if parse still unsuccessful, to allow update for empty match
+            if (accept > -1 && (i > lastAcceptPos || lastAcceptState == -1)){
                 lastAcceptPos = i;
                 lastAcceptState = accept;
             }
