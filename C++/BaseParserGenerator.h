@@ -15,8 +15,8 @@ enum Gtoken {NEWLINE=0, SPACES, NTRML, TRML, LBRAC, RBRAC, CHR, COLON, PIPE, SCO
 //Inherited classes will implement specific parsing algorithms
 class BaseParserGenerator{
 protected:
-    typedef std::vector<int> Rule;
-    std::vector<Rule> grammar;
+    int tokenNum;
+    std::vector<int> grammar;
     std::vector<char> tokenIgnore; 
     std::vector<int> ruleNumStart;
     
@@ -49,7 +49,7 @@ private:
         int symbolNumber(std::string &symbol);
         void parseTokens();
         void parseRule();
-        void parseProduction(Rule& production);
+        void parseProduction();
         void parseGrammar();
     };
     friend GrammarParser;

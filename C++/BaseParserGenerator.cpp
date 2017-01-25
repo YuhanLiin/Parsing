@@ -38,11 +38,8 @@ void BaseParserGenerator::GrammarParser::getWord(std::string &word){
 
 void BaseParserGenerator::GrammarParser::replaceSymbol(int old, int replacement){
     for (int i=0; i<parser->grammar.size(); i++){
-        Rule &curRule = parser->grammar[i];
-        for (int j=0; j<curRule.size(); j++){
-            if (curRule[j] == old){
-                curRule[j] = replacement;
-            }
+        if (parser->grammar[i] == old){
+            parser->grammar[i] = replacement;
         }
     }
 }
@@ -74,50 +71,62 @@ void BaseParserGenerator::GrammarParser::parseRule(){
     if (!tokenIs(NTRML)) error(NTRML);
     std::string lhs;
     getWord(lhs);
+    //If there already exists a previous instance of this nonterminal mapped to a placeholder, replace it with the newly derived symbol number
     int lhsnum = symbolNumber(lhs);
     if (lhsnum){
         replaceSymbol(lhsnum, ruleNum);
     }
+    //Map the number of the left hand nonterminal to the position in the grammar vector where its rules start
     parser->ruleNumStart.push_back(parser->grammar.size());
+    //Maps lhs nonterminal string to number
     symbolTable[lhs] = ruleNum;
     next(COLON);
 
+    //Parse as many pipe-separated productions as possible before ending the rule with a semicolon
     do {
-        parser->grammar.push_back(Rule());
-        Rule &production = parser->grammar.back();
-        production.push_back(ruleNum);
-        parseProduction(production);
+        parseProduction();
     } while(tokenIs(PIPE));
     if (!tokenIs(SCOLON)) error(SCOLON);
+    //The next rule/lhs nonterminal is assigned an increased number
     ruleNum++;
 }
 
-void BaseParserGenerator::GrammarParser::parseProduction(Rule &production){
+void BaseParserGenerator::GrammarParser::parseProduction(){
+    //The first number of a production will be its # of rhs symbols. Increments as production is parsed
+    parser->grammar.push_back(0);
+    int countIndex = parser->grammar.size()-1;
     while(true) {
+        //Repeatedly obtain tokens
         next();
         std::string rhs;
         getWord(rhs);
+        //Chars are added to the production as is
         if (tokenIs(CHR)){
-            production.push_back(rhs[1]);
+            parser->grammar.push_back(rhs[1]);
         }
+        //Terminal symbols are assigned their numbers from the symbol table. Error raised if symbol doesn't exist
         else if (tokenIs(TRML)){
             int num = symbolNumber(rhs);
             if (!num) error(TRML);
-            production.push_back(num);
+            parser->grammar.push_back(num);
         }
+        //Nonterminal symbol is either assigned its # from symbol table or given a -ve placeholder # that's replaced later 
         else if (tokenIs(NTRML)){
             int rhsnum = symbolNumber(rhs);
             if (rhsnum){
-                production.push_back(rhsnum);
+                parser->grammar.push_back(rhsnum);
             }
             else{
+                //Map placeholder # to the symbol and push it back. Decrement the placeholder, since its -ve.
                 symbolTable[rhs] = unfoundRuleNum;
-                production.push_back(unfoundRuleNum);
+                parser->grammar.push_back(unfoundRuleNum);
                 unfoundRuleNum--;
             }
         }
-        else
+        else{
             return;
+        }
+        parser->grammar[countIndex]++;
     }
 }
 
@@ -141,26 +150,33 @@ int BaseParserGenerator::GrammarParser::symbolNumber(std::string &symbol){
 BaseParserGenerator::BaseParserGenerator(char *grammarConfig){
     GrammarParser gparser = GrammarParser(this, grammarConfig);
     gparser.parseGrammar();
+    ruleNumStart.push_back(grammar.size());
+    tokenNum = gparser.tokenNum;
 }
 
 std::ostream& operator<<(std::ostream& os, const BaseParserGenerator& parser){
-    for (int i=0; i<parser.grammar.size(); i++){
-        const BaseParserGenerator::Rule &rule = parser.grammar[i];
-        os << rule[0] << " : ";
-        for (int j=1; j<rule.size(); j++){
-            os << rule[j] << ' ';
+    for (int i=0; i<parser.ruleNumStart.size()-1; i++){
+        int j = parser.ruleNumStart[i];
+        int end = parser.ruleNumStart[i+1];
+        while (j < end){
+            os << i+parser.tokenNum+1 << " : ";
+            int rhsLimit = j + parser.grammar[j];
+            j++;
+            for (j; j <= rhsLimit; j++){
+                os << parser.grammar[j] << ' ';
+            }
+            os << ";\n";
         }
-        os << '\n';
     }
     return os;
 }
 
 int main()
 {
-    char *grammar = R"({ NAME NUM CHAR BRAC }
-    exp : NUM BRAC 'a' | CHAR CHAR abc;
+    char *grammar = R"({ NAME NUM CHAR BRAC *}
+    exp : NUM BRAC 'a' | CHAR CHAR abc exp abc;
     abc : BRAC exp |; 
-    d : )";
+)";
 
     BaseParserGenerator parser = BaseParserGenerator(grammar);
     std::cout << parser;
