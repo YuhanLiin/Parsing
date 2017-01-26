@@ -7,9 +7,21 @@ BaseParserGenerator::GrammarParser::GrammarParser(BaseParserGenerator *p, char *
     prevpos = curpos;
 }
 
-void BaseParserGenerator::GrammarParser::error(Gtoken token){
+//Convert gtoken enum into string form
+const char* BaseParserGenerator::GrammarParser::gtokenName(Gtoken gtoken){
+    const char* const name[11] = {"newline", "spaces", "nonterminal", "terminal", "left bracket", "right bracket", 
+        "char", "colon", "pipe", "semicolon", "star"};
+    return name[gtoken];
+}
+//Error for unexpected token
+void BaseParserGenerator::GrammarParser::error(Gtoken gtoken){
     std::cerr << "Grammar config error at line " << lexer.tokenLine << " position " << lexer.tokenCol << 
-    " : Unexpected token '" << lexer.tokenID << "' encountered instead of token '" << token << "'\n";
+    " : Unexpected token " << gtokenName((Gtoken)lexer.tokenID) << " encountered instead of token " << gtokenName(gtoken) << "\n";
+    throw 0;
+}
+//Error with custom message
+void BaseParserGenerator::GrammarParser::error(char *message){
+    std::cerr << "Grammar config error at line " << lexer.tokenLine << " position " << lexer.tokenCol << " : " << message << '\n';
     throw 0;
 }
 
@@ -94,7 +106,7 @@ void BaseParserGenerator::GrammarParser::parseRule(){
     }
     //If the nonterminal has already appeared in another lhs, raise error
     else if (lhsnum > 0){
-        error(STAR);
+        error("Cannot have rules with duplicate left hand symbols");
     }
 
     //Map the number of the left hand nonterminal to the position in the grammar vector where its rules start
@@ -129,7 +141,7 @@ void BaseParserGenerator::GrammarParser::parseProduction(){
         //Terminal symbols are assigned their numbers from the symbol table. Error raised if symbol doesn't exist
         else if (tokenIs(TRML)){
             int num = symbolNumber(rhs);
-            if (!num) error(TRML);
+            if (!num) error("The terminal symbol does not exist in the Token Declaration");
             parser->grammar.push_back(num);
         }
         //Nonterminal symbol is either assigned its # from symbol table or given a -ve placeholder # that's replaced later 

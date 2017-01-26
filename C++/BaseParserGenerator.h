@@ -71,7 +71,9 @@ private:
 
         GrammarParser(BaseParserGenerator *p, char *grammarConfig);
         //Parser helper functions
+        const char* gtokenName(Gtoken gtoken);
         void error(Gtoken token);
+        void error(char * message);
         void next();
         void next(Gtoken gtoken);
         bool tokenIs(Gtoken gtoken);
