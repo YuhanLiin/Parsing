@@ -11,6 +11,7 @@ Lexer::Lexer(char* regexplist[], int len, int newlineToken=-1){
     if (len == 0){
         //Offset destructor
         acceptTable = new int[0];
+        this->newlineToken = -100;
         return;
     }
 

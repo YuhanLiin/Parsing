@@ -1,5 +1,6 @@
 #include "BaseParserGenerator.h"
 
+//GrammarParser constructor initializes tracker pointers
 BaseParserGenerator::GrammarParser::GrammarParser(BaseParserGenerator *p, char *grammarConfig){
     parser = p;
     curpos = grammarConfig;
@@ -12,30 +13,36 @@ void BaseParserGenerator::GrammarParser::error(Gtoken token){
     throw 0;
 }
 
+//Get the next token from the grammar config string. Ignore newlines and spaces
 void BaseParserGenerator::GrammarParser::next(){
     do{
         prevpos = curpos;
         curpos = lexer.lex(curpos);
         //std::cout << lexer.tokenID << ' ' << lexer.tokenCol << ' ' << (*prevpos) << '\n';
     } while((lexer.tokenID == 0 || lexer.tokenID == 1) && prevpos != curpos);
+    // Quits when empty token is encountered, as it signifies an incorrect input
 }
 
+//Gets and asserts that the next token is equal to the parameter token
 void BaseParserGenerator::GrammarParser::next(Gtoken gtoken){
     next();
     if (lexer.tokenID != gtoken) 
         error(gtoken);
 }
 
+//Returns whether the current token equals the parameter. Does not advance input
 bool BaseParserGenerator::GrammarParser::tokenIs(Gtoken gtoken){
     return lexer.tokenID == gtoken;
 }
 
+//Extract the lexeme of the current token by reference
 void BaseParserGenerator::GrammarParser::getWord(std::string &word){
     for (char *c = prevpos; c < curpos; c++){
         word.push_back(*c);
     }
 }
 
+//Replace each instance of a placeholder symbol # in a grammar with a new symbol #. Called when a symbol is found in lhs.
 void BaseParserGenerator::GrammarParser::replaceSymbol(int old, int replacement){
     for (int i=0; i<parser->grammar.size(); i++){
         if (parser->grammar[i] == old){
@@ -44,38 +51,52 @@ void BaseParserGenerator::GrammarParser::replaceSymbol(int old, int replacement)
     }
 }
 
+// Parses the optional Token Declaration section
 void BaseParserGenerator::GrammarParser::parseTokens(){
     next();
     if(tokenIs(LBRAC)){
         while(true) {
             next();
+            // For token, extract and map the name to the token number 
             if (tokenIs(TRML)){
                 std::string str;
                 getWord(str);
                 symbolTable[str] = tokenNum;
+                // Makes sure the vector is same length as token number.
                 parser->tokenIgnore.push_back(0);
             }
+            // For stars (*), mark the current token number as ignored
             else if (tokenIs(STAR)){
                 parser->tokenIgnore.push_back(1);
             }
             else{
                 break;
             }
+            // Increment the token number for subsequent tokens
             tokenNum++;
         }
         if (!tokenIs(RBRAC)) error(RBRAC);
+        // Shift input here to achieve similar semantics as the tokenless case
+        next();
     }
 }
 
+// Parses entire grammar rule and registers it into the internal representation
+// Responsible for granting the lhs symbol a non-placeholder (+ve) symbol #
 void BaseParserGenerator::GrammarParser::parseRule(){
     if (!tokenIs(NTRML)) error(NTRML);
     std::string lhs;
     getWord(lhs);
-    //If there already exists a previous instance of this nonterminal mapped to a placeholder, replace it with the newly derived symbol number
+    //If there already exists a previous instance of the lhs nonterminal mapped to a placeholder, replace it with the newly derived symbol number
     int lhsnum = symbolNumber(lhs);
-    if (lhsnum){
+    if (lhsnum < 0){
         replaceSymbol(lhsnum, ruleNum);
     }
+    //If the nonterminal has already appeared in another lhs, raise error
+    else if (lhsnum > 0){
+        error(STAR);
+    }
+
     //Map the number of the left hand nonterminal to the position in the grammar vector where its rules start
     parser->ruleNumStart.push_back(parser->grammar.size());
     //Maps lhs nonterminal string to number
@@ -91,6 +112,7 @@ void BaseParserGenerator::GrammarParser::parseRule(){
     ruleNum++;
 }
 
+// Processes a single production
 void BaseParserGenerator::GrammarParser::parseProduction(){
     //The first number of a production will be its # of rhs symbols. Increments as production is parsed
     parser->grammar.push_back(0);
@@ -126,20 +148,25 @@ void BaseParserGenerator::GrammarParser::parseProduction(){
         else{
             return;
         }
+        //Increase the symbol count
         parser->grammar[countIndex]++;
     }
 }
 
+// Parses whole config file
 void BaseParserGenerator::GrammarParser::parseGrammar(){
     parseTokens();
-    next();
+    // Initialize the nonterminal numbers
     ruleNum = tokenNum + 1;
+    // Parse rules until there are no more
     do{
         parseRule();
+        // Shift because parseRule() assumes that its first token has already been advanced
         next();
     } while (*curpos != 0);
 }
 
+// Returns symbol's symbol #. Returns 0 if symbol is not in table
 int BaseParserGenerator::GrammarParser::symbolNumber(std::string &symbol){
     if (symbolTable.count(symbol) == 0)
         return 0;
@@ -147,13 +174,19 @@ int BaseParserGenerator::GrammarParser::symbolNumber(std::string &symbol){
         return symbolTable[symbol];
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//Constructor calls on grammar parser
 BaseParserGenerator::BaseParserGenerator(char *grammarConfig){
     GrammarParser gparser = GrammarParser(this, grammarConfig);
     gparser.parseGrammar();
+    // Pads the symbol-to-grammar-position mapping to simplify looping operations
     ruleNumStart.push_back(grammar.size());
+    // Assign the token number to the parser instance
     tokenNum = gparser.tokenNum;
 }
 
+//Iostream overload that prints the internal grammar as numbers
 std::ostream& operator<<(std::ostream& os, const BaseParserGenerator& parser){
     for (int i=0; i<parser.ruleNumStart.size()-1; i++){
         int j = parser.ruleNumStart[i];
