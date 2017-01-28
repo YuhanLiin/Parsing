@@ -31,6 +31,8 @@
 
 //Represents the tokens used to parse grammar strings
 enum Gtoken {NEWLINE=0, SPACES, NTRML, TRML, LBRAC, RBRAC, CHR, COLON, PIPE, SCOLON, STAR};
+//Represents current state of a given parse
+enum ParseStatus {SYNTAXERROR, TOKENERROR, GOOD, DONE};
 
 //Error raised when grammar configuration is syntactically wrong
 class GrammarConfigError : public std::exception{
@@ -126,11 +128,10 @@ public:
     // allow semantic actions on the values associated with reduced symbols. Value for tokens will be std::string
 
     //Reset all internal variables and initiate parse on a new input. Begin the first reduction
-    //Returns 0 if reduction fails, 1 if reduction succeeds, and 2 if parse if done
-    virtual char parse(char *input) = 0;
+    virtual ParseStatus parse(char *input) = 0;
     //Finish a pending reduction and associate the produced lhs symbol with the reduced value. Begin the next reduction
-    //Primary means of advancing the parsing. Returns 0 if reduction fails, 1 if reduction succeeds, and 2 if parse if done.
-    virtual char reduce(void *reducedValue) = 0;
+    //Primary means of advancing the parsing
+    virtual ParseStatus reduce(void *reducedValue) = 0;
     //Return number of the lhs symbol being reduced
     virtual int lhs() = 0;
     //Return which production of a rule is being reduced
