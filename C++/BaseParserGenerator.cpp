@@ -165,10 +165,10 @@ void BaseParserGenerator::GrammarParser::parseProduction(){
     }
 }
 
-// Parses whole config file
+// Parses whole config string
 void BaseParserGenerator::GrammarParser::parseGrammar(){
     parseTokens();
-    // Initialize the nonterminal numbers
+    // Initialize the nonterminal number
     ruleNum = tokenNum + 1;
     // Parse rules until there are no more
     do{
@@ -189,13 +189,81 @@ int BaseParserGenerator::GrammarParser::symbolNumber(std::string &symbol){
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //Constructor calls on grammar parser
-BaseParserGenerator::BaseParserGenerator(char *grammarConfig){
+BaseParserGenerator::BaseParserGenerator(char *grammarConfig, Lexer *lex){
     GrammarParser gparser = GrammarParser(this, grammarConfig);
     gparser.parseGrammar();
     // Pads the symbol-to-grammar-position mapping to simplify looping operations
     ruleNumStart.push_back(grammar.size());
     // Assign the token number to the parser instance
     tokenNum = gparser.tokenNum;
+    //Assign lexer
+    lexptr = lex;
+}
+
+//Add the rhs symbols of a production to a stack
+void BaseParserGenerator::addProduction(int ruleStart, std::vector<int>& stack, bool reverse=false){
+    int start = ruleStart+1;
+    int end = grammar[ruleStart] + ruleStart;
+    if (!reverse){
+        for (int i=start; i<=end; i++){
+            stack.push_back(grammar[i]);
+        }
+    }
+    else{
+        for (int i=end; i>=start; i--){
+            stack.push_back(grammar[i]);
+        }
+    }
+}
+
+//Go to starting pos of next production in grammar
+int BaseParserGenerator::nextProduction(int ruleStart){
+    return ruleStart + grammar[ruleStart] + 1;
+}
+
+//Return start of lhs rule in grammar
+int BaseParserGenerator::ruleStart(int symbol){
+    return ruleNumStart[symbol];
+}
+
+//Return the token or char
+int BaseParserGenerator::next(){
+    //Skip all ignored tokens
+    do {
+        prevpos = curpos;
+        curpos = lexptr->lex(curpos);
+    } while(tokenIgnore[lexptr->tokenID]);
+    //If no actual token is available, advance the input by 1 and return the char
+    if (lexptr->tokenID < 0){
+        curpos++;
+        lexptr->tokenCol++;
+        return (int)(*prevpos);
+    } 
+    //Otherwise, return the incremented token number
+    return lexptr->tokenID + NumOfChars;
+}
+
+//Get contents of current token
+void BaseParserGenerator::getWord(std::string &word){
+    for (char* i=prevpos; i<curpos; i++){
+        word.push_back(*i);
+    }
+}
+
+//Convert to and from incremented/nonincremented rule number
+int BaseParserGenerator::toRuleCount(int ruleNum){
+    return ruleNum - tokenNum - 1;
+}
+int BaseParserGenerator::toRuleNum(int ruleCount){
+    return ruleCount + tokenNum + 1;
+}
+
+//Return lexer's column and line numbers
+int BaseParserGenerator::colNum(){
+    return lexptr->tokenCol;
+}
+int BaseParserGenerator::lineNum(){
+    return lexptr->tokenLine;
 }
 
 //Iostream overload that prints the internal grammar as numbers
@@ -204,7 +272,7 @@ std::ostream& operator<<(std::ostream& os, const BaseParserGenerator& parser){
         int j = parser.ruleNumStart[i];
         int end = parser.ruleNumStart[i+1];
         while (j < end){
-            os << i+parser.tokenNum+1 << " : ";
+            os << i + parser.tokenNum + 1 << " : ";
             int rhsLimit = j + parser.grammar[j];
             j++;
             for (j; j <= rhsLimit; j++){
@@ -218,12 +286,12 @@ std::ostream& operator<<(std::ostream& os, const BaseParserGenerator& parser){
 
 int main()
 {
-    char *grammar = R"({ NAME NUM CHAR BRAC *}
-    exp : NUM BRAC 'a' | CHAR CHAR abc exp abc;
-    abc : BRAC exp |; 
-)";
+//     char *grammar = R"({ NAME NUM CHAR BRAC *}
+//     exp : NUM BRAC 'a' | CHAR CHAR abc exp abc;
+//     abc : BRAC exp |; 
+// )";
 
-    BaseParserGenerator parser = BaseParserGenerator(grammar);
-    std::cout << parser;
-    return 0;
+//     BaseParserGenerator parser = BaseParserGenerator(grammar);
+//     std::cout << parser;
+//     return 0;
 }

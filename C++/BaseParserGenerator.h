@@ -25,7 +25,7 @@
 // Tokens/terminals are all UPPERCASE. Nonterminals are lowercase. 
 // Individual characters can appear in rhs of rules in the form of 'x'.
 
-// Numerical representation: All ASCII values above 1 are reserved for chars. Tokens numbers start from 128 + 1.
+// Numerical representation: All ASCII values above 1 are reserved for chars. Tokens numbers start from 128.
 // Nonterminal numbers start from 128 + (# of tokens) + 1. 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -36,7 +36,7 @@ enum Gtoken {NEWLINE=0, SPACES, NTRML, TRML, LBRAC, RBRAC, CHR, COLON, PIPE, SCO
 //Inherited classes will implement specific parsing algorithms
 class BaseParserGenerator{
 protected:
-    //Total # of tokens used by the grammar. Initialized after parsing finishes
+    //Total incremented # of tokens used by the grammar. Initialized after parsing finishes
     int tokenNum;
     // Grammar is a list of ints divided into segments representing production rules. 
     // The first int of each segment is the # of rhs symbols in the production, followed by each rhs symbol
@@ -47,7 +47,25 @@ protected:
     // Maps lhs symbol # to the position in the grammar where the production with that lhs symbol starts. Padded at the end to allow looping
     // Allows instant access of productions with any lhs symbol
     std::vector<int> ruleNumStart;
-    
+
+    char * curpos;
+    char * prevpos;
+    Lexer * lexptr;
+
+    //Add the rhs symbols of a production to a stack
+    void addProduction(int ruleStart, std::vector<int>& stack, bool reverse);
+    //Go to starting pos of next production in grammar
+    int nextProduction(int ruleStart);
+    //Gets next token number/char. 0 means end of input
+    int next();
+    //Starting position in grammar of a given lhs symbol
+    int ruleStart(int symbol);
+    //Get contents of current token
+    void getWord(std::string &word);
+    //Switch between the non-incremented and incremented rule/nonterminal numbers
+    int toRuleCount(int ruleNum);
+    int toRuleNum (int ruleCount);
+
 private:
     //Internal class handling resources for turning the grammar string into an integral representation
     class GrammarParser{
@@ -62,10 +80,10 @@ private:
         char *curpos;
         char *prevpos;
         BaseParserGenerator *parser;
-        //Number of rules parsed so far, not productions. Truly initialized once all tokens have been parsed
+        //Icremented number of rules parsed so far, not productions. Truly initialized once all tokens have been parsed
         int ruleNum = -10000;
-        //Number of tokens parsed so far. Number starts from after all ASCII chars
-        int tokenNum = 1 + NumOfChars;
+        //Incremented number of tokens parsed so far. Number starts from after all ASCII chars
+        int tokenNum = NumOfChars;
         //Placeholder number for nonterminals not yet encountered on the lhs. Decrements as more are found
         int unfoundRuleNum = -1;
 
@@ -92,9 +110,27 @@ private:
 
 
 public:
-    BaseParserGenerator(char * grammarConfig);
+    BaseParserGenerator(char * grammarConfig, Lexer * lex);
     friend std::ostream& operator<<(std::ostream& os, const BaseParserGenerator& parser);
 
+    //These virtual methods, when implemented, will allow a parse to be conducted on a reduction-by-reduction basis and
+    // allow semantic actions on the values associated with reduced symbols. Value for tokens will be std::string
+
+    //Reset all internal variables and initiate parse on a new input. Begin the first reduction
+    //Returns 0 if reduction fails, 1 if reduction succeeds, and 2 if parse if done
+    virtual char parse(char *input) = 0;
+    //Finish a pending reduction and associate the produced lhs symbol with the reduced value. Begin the next reduction
+    //Primary means of advancing the parsing. Returns 0 if reduction fails, 1 if reduction succeeds, and 2 if parse if done.
+    virtual char reduce(void *reducedValue) = 0;
+    //Return number of the lhs symbol being reduced
+    virtual int lhs() = 0;
+    //Return which production of a rule is being reduced
+    virtual int prodNum() = 0;
+    //Return pointer to value of a specific rhs value being reduced
+    virtual void *rhs(int pos) = 0;
+    
+    int lineNum();
+    int colNum();
 };
 
 
