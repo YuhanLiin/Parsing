@@ -6,7 +6,7 @@
 #include <string>
 #include <unordered_map>
 #include <iostream>
-#include <cstring>
+#include <exception>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Parser Generator converts grammar configuration strings into a concise internal representation on which a parser can be built.
@@ -31,6 +31,15 @@
 
 //Represents the tokens used to parse grammar strings
 enum Gtoken {NEWLINE=0, SPACES, NTRML, TRML, LBRAC, RBRAC, CHR, COLON, PIPE, SCOLON, STAR};
+
+//Error raised when grammar configuration is syntactically wrong
+class GrammarConfigError : public std::exception{
+    char *str;
+public:
+    // Error constructed with position in string as input    
+    GrammarConfigError(char *msg);
+    const char *what();
+};
 
 //Base class for generating parsers. Handles conversion of grammar configuration strings into internal representation of the grammar
 //Inherited classes will implement specific parsing algorithms

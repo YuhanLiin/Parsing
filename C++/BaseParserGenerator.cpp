@@ -1,5 +1,16 @@
 #include "BaseParserGenerator.h"
 
+//Error constructor takes a message
+GrammarConfigError::GrammarConfigError(char *msg){
+    str = msg;
+}
+//Error outputs a message
+const char* GrammarConfigError::what(){
+    return str;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////
+
 //GrammarParser constructor initializes tracker pointers
 BaseParserGenerator::GrammarParser::GrammarParser(BaseParserGenerator *p, char *grammarConfig){
     parser = p;
@@ -17,12 +28,12 @@ const char* BaseParserGenerator::GrammarParser::gtokenName(Gtoken gtoken){
 void BaseParserGenerator::GrammarParser::error(Gtoken gtoken){
     std::cerr << "Grammar config error at line " << lexer.tokenLine << " position " << lexer.tokenCol << 
     " : Unexpected token " << gtokenName((Gtoken)lexer.tokenID) << " encountered instead of token " << gtokenName(gtoken) << "\n";
-    throw 0;
+    throw GrammarConfigError("Grammar Config Error");
 }
 //Error with custom message
 void BaseParserGenerator::GrammarParser::error(char *message){
     std::cerr << "Grammar config error at line " << lexer.tokenLine << " position " << lexer.tokenCol << " : " << message << '\n';
-    throw 0;
+    throw GrammarConfigError("Grammar Config Error");
 }
 
 //Get the next token from the grammar config string. Ignore newlines and spaces
