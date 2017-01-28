@@ -46,6 +46,10 @@ Lexer::Lexer(char* regexplist[], int len, int newlineToken=-1){
 
 //Parses the next token in the input and stores its info. Returns pointer to char after end of token
 char* Lexer::lex(char* input){
+    //Don't advance input if lexer was created with no regexp
+    if (newlineToken == -100){
+        return input;
+    }
     char* curpos = input;
     //Run simulation, which advances the curpos pointer and produces the token id
     tokenID = simulate(curpos);
