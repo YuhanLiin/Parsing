@@ -201,12 +201,13 @@ int BaseParserGenerator::GrammarParser::symbolNumber(std::string &symbol){
 
 //Constructor calls on grammar parser
 BaseParserGenerator::BaseParserGenerator(char *grammarConfig, Lexer *lex){
-    GrammarParser gparser = GrammarParser(this, grammarConfig);
+    GrammarParser gparser{this, grammarConfig};
     gparser.parseGrammar();
     // Pads the symbol-to-grammar-position mapping to simplify looping operations
     ruleNumStart.push_back(grammar.size());
-    // Assign the token number to the parser instance
-    tokenNum = gparser.tokenNum;
+    // Assign the token and rule numbers
+    tokenNum = tokenIgnore.size() + NumOfChars;
+    ruleNum = toRuleNum(ruleNumStart.size()-1);
     //Assign lexer
     lexptr = lex;
 }
@@ -263,10 +264,15 @@ void BaseParserGenerator::getWord(std::string &word){
 
 //Convert to and from incremented/nonincremented rule number
 int BaseParserGenerator::toRuleCount(int ruleNum){
-    return ruleNum - tokenNum - 1;
+    return ruleNum - tokenNum;
 }
 int BaseParserGenerator::toRuleNum(int ruleCount){
-    return ruleCount + tokenNum + 1;
+    return ruleCount + tokenNum;
+}
+
+//TokenNum is the start of rule numbers, so check if symbol is below it
+bool BaseParserGenerator::isTerminal(int symbol){
+    return symbol < tokenNum;
 }
 
 //Return lexer's column and line numbers
@@ -283,7 +289,7 @@ std::ostream& operator<<(std::ostream& os, const BaseParserGenerator& parser){
         int j = parser.ruleNumStart[i];
         int end = parser.ruleNumStart[i+1];
         while (j < end){
-            os << i + parser.tokenNum + 1 << " : ";
+            os << i + parser.tokenNum << " : ";
             int rhsLimit = j + parser.grammar[j];
             j++;
             for (j; j <= rhsLimit; j++){

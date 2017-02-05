@@ -53,7 +53,7 @@ private:
         // 0->newline  1->spaces  2->nonterminal  3->terminal  4->lbrac  5->rbrac  6->char  7->colon  8->pipe  9->scolon  10->star
         char *regexps[11] = {"\n", " *", "[a-z]+", "[A-Z]+", "{", "}", "'.'", ":", "\\|", ";", "\\*"};
         // Lexer used for parsing grammar string
-        Lexer &lexer = Lexer(regexps, 11, 0);
+        Lexer lexer{regexps, 11, 0};
         // Maps nonterminal and terminal symbols to their numerical representations
         std::unordered_map<std::string, int> symbolTable;
         // Tracks current and previous location in the grammar string so that words can be extracted
@@ -89,8 +89,10 @@ private:
     friend GrammarParser;
 
 protected:
-    //Total incremented # of tokens used by the grammar. Initialized after parsing finishes
+    //Total incremented # of tokens  used by the grammar. Initialized after parsing finishes. Max token index + 1
     int tokenNum;
+    //Rule num is token num + the number of nonterminals. Max rule index + 1
+    int ruleNum;
     // Grammar is a list of ints divided into segments representing production rules. 
     // The first int of each segment is the # of rhs symbols in the production, followed by each rhs symbol
     // Ex: a : A B C | B becomes  3, 129, 130, 131, 1, 130 
@@ -118,6 +120,8 @@ protected:
     //Switch between the non-incremented and incremented rule/nonterminal numbers
     int toRuleCount(int ruleNum);
     int toRuleNum (int ruleCount);
+    //Checks if symbol is terminal
+    bool isTerminal(int symbol);
 
 public:
     BaseParserGenerator(char * grammarConfig, Lexer * lex);
