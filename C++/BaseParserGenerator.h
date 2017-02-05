@@ -46,37 +46,6 @@ public:
 //Base class for generating parsers. Handles conversion of grammar configuration strings into internal representation of the grammar
 //Inherited classes will implement specific parsing algorithms
 class BaseParserGenerator{
-protected:
-    //Total incremented # of tokens used by the grammar. Initialized after parsing finishes
-    int tokenNum;
-    // Grammar is a list of ints divided into segments representing production rules. 
-    // The first int of each segment is the # of rhs symbols in the production, followed by each rhs symbol
-    // Ex: a : A B C | B becomes  3, 129, 130, 131, 1, 130 
-    std::vector<int> grammar;
-    // A on/off array indicating which tokens will be ignored
-    std::vector<char> tokenIgnore; 
-    // Maps lhs symbol # to the position in the grammar where the production with that lhs symbol starts. Padded at the end to allow looping
-    // Allows instant access of productions with any lhs symbol
-    std::vector<int> ruleNumStart;
-
-    char * curpos;
-    char * prevpos;
-    Lexer * lexptr;
-
-    //Add the rhs symbols of a production to a stack
-    void addProduction(int ruleStart, std::vector<int>& stack, bool reverse);
-    //Go to starting pos of next production in grammar
-    int nextProduction(int ruleStart);
-    //Gets next token number/char. 0 means end of input
-    int next();
-    //Starting position in grammar of a given lhs symbol
-    int ruleStart(int symbol);
-    //Get contents of current token
-    void getWord(std::string &word);
-    //Switch between the non-incremented and incremented rule/nonterminal numbers
-    int toRuleCount(int ruleNum);
-    int toRuleNum (int ruleCount);
-
 private:
     //Internal class handling resources for turning the grammar string into an integral representation
     class GrammarParser{
@@ -84,7 +53,7 @@ private:
         // 0->newline  1->spaces  2->nonterminal  3->terminal  4->lbrac  5->rbrac  6->char  7->colon  8->pipe  9->scolon  10->star
         char *regexps[11] = {"\n", " *", "[a-z]+", "[A-Z]+", "{", "}", "'.'", ":", "\\|", ";", "\\*"};
         // Lexer used for parsing grammar string
-        Lexer lexer = Lexer(regexps, 11, 0);
+        Lexer &lexer = Lexer(regexps, 11, 0);
         // Maps nonterminal and terminal symbols to their numerical representations
         std::unordered_map<std::string, int> symbolTable;
         // Tracks current and previous location in the grammar string so that words can be extracted
@@ -119,10 +88,43 @@ private:
     };
     friend GrammarParser;
 
+protected:
+    //Total incremented # of tokens used by the grammar. Initialized after parsing finishes
+    int tokenNum;
+    // Grammar is a list of ints divided into segments representing production rules. 
+    // The first int of each segment is the # of rhs symbols in the production, followed by each rhs symbol
+    // Ex: a : A B C | B becomes  3, 129, 130, 131, 1, 130 
+    std::vector<int> grammar;
+    // A on/off array indicating which tokens will be ignored
+    std::vector<char> tokenIgnore; 
+    // Maps lhs symbol # to the position in the grammar where the production with that lhs symbol starts. Padded at the end to allow looping
+    // Allows instant access of productions with any lhs symbol
+    std::vector<int> ruleNumStart;
+
+    char * curpos;
+    char * prevpos;
+    Lexer * lexptr;
+
+    //Add the rhs symbols of a production to a stack
+    void addProduction(int ruleStart, std::vector<int>& stack, bool reverse);
+    //Go to starting pos of next production in grammar
+    int nextProduction(int ruleStart);
+    //Gets next token number/char. 0 means end of input
+    int next();
+    //Starting position in grammar of a given lhs symbol
+    int ruleStart(int symbol);
+    //Get contents of current token
+    void getWord(std::string &word);
+    //Switch between the non-incremented and incremented rule/nonterminal numbers
+    int toRuleCount(int ruleNum);
+    int toRuleNum (int ruleCount);
 
 public:
     BaseParserGenerator(char * grammarConfig, Lexer * lex);
     friend std::ostream& operator<<(std::ostream& os, const BaseParserGenerator& parser);
+    //Disable copying and assigning
+    BaseParserGenerator(BaseParserGenerator&) = delete;
+    BaseParserGenerator& operator=(BaseParserGenerator&) = delete;
 
     //These virtual methods, when implemented, will allow a parse to be conducted on a reduction-by-reduction basis and
     // allow semantic actions on the values associated with reduced symbols. Value for tokens will be std::string

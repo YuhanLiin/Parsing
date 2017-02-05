@@ -84,10 +84,14 @@ protected:
     void addState(int state, std::vector<int>& curStates, int *listids, int id);
     virtual int isAccepting(int state) = 0;
     int simulate(char* &str);
-    //Destructor
+    //Destructor and constructor
     ~BaseRegexp();
+    BaseRegexp(){}
     friend RegexpBuilder;
     friend std::ostream& operator<<(std::ostream& os, const BaseRegexp& regexp);
+    //Disable copying and reassigning
+    BaseRegexp(BaseRegexp&) = delete;
+    BaseRegexp& operator=(BaseRegexp&) = delete;
 };
 
 // Class representing a single regexp. Included functions for matching and searching through strings
