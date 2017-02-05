@@ -295,8 +295,8 @@ std::ostream& operator<<(std::ostream& os, const BaseParserGenerator& parser){
     return os;
 }
 
-int main()
-{
+// int main()
+// {
 //     char *grammar = R"({ NAME NUM CHAR BRAC *}
 //     exp : NUM BRAC 'a' | CHAR CHAR abc exp abc;
 //     abc : BRAC exp |; 
@@ -305,4 +305,4 @@ int main()
 //     BaseParserGenerator parser = BaseParserGenerator(grammar);
 //     std::cout << parser;
 //     return 0;
-}
+//}
