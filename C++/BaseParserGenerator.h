@@ -145,5 +145,13 @@ public:
     int colNum();
 };
 
+struct ParseValue{
+    void * ptr = NULL;
+    bool toDelete = false;
+    ~ParseValue(){
+        if (toDelete) delete ptr;
+    }
+};
+
 
 #endif
