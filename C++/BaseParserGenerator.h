@@ -27,12 +27,13 @@
 
 // Numerical representation: All ASCII values above 1 are reserved for chars. Tokens numbers start from 128.
 // Nonterminal numbers start from 128 + (# of tokens) + 1. 
+// Start symbol will always be the lhs of the first rule in the grammar
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //Represents the tokens used to parse grammar strings
 enum Gtoken {NEWLINE=0, SPACES, NTRML, TRML, LBRAC, RBRAC, CHR, COLON, PIPE, SCOLON, STAR};
 //Represents current state of a given parse
-enum ParseStatus {SYNTAXERROR, TOKENERROR, GOOD, DONE};
+enum ParseStatus {SYNTAXERROR, GOOD, DONE};
 
 //Error raised when grammar configuration is syntactically wrong
 class GrammarConfigError : public std::exception{
@@ -139,12 +140,15 @@ public:
     //Primary means of advancing the parsing
     virtual ParseStatus reduce(void *reducedValue) = 0;
     //Return number of the lhs symbol being reduced
-    virtual int lhs() = 0;
+    virtual int lhsNum() = 0;
     //Return which production of a rule is being reduced
     virtual int prodNum() = 0;
     //Return pointer to value of a specific rhs value being reduced
-    virtual void *rhs(int pos) = 0;
+    virtual void *rhsVal(int pos) = 0;
     
+    //Returns number of current token, the expected token, and the column/line numbers in case parse fails
+    virtual int curToken() = 0;
+    virtual int expectedToken() = 0;
     int lineNum();
     int colNum();
 };
