@@ -31,7 +31,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //Represents the tokens used to parse grammar strings
-enum Gtoken {NEWLINE=0, SPACES, NTRML, TRML, LBRAC, RBRAC, CHR, COLON, PIPE, SCOLON, STAR};
+enum Gtoken {INVALID=-1, NEWLINE=0, SPACES, NTRML, TRML, LBRAC, RBRAC, CHR, COLON, PIPE, SCOLON, STAR};
 //Represents current state of a given parse
 enum ParseStatus {SYNTAXERROR, GOOD, DONE};
 
@@ -52,7 +52,7 @@ private:
     class GrammarParser{
     public:
         // 0->newline  1->spaces  2->nonterminal  3->terminal  4->lbrac  5->rbrac  6->char  7->colon  8->pipe  9->scolon  10->star
-        char *regexps[11] = {"\n", " *", "[a-z]+", "[A-Z]+", "{", "}", "'.'", ":", "\\|", ";", "\\*"};
+        char *regexps[11] = {"\n", " +", "[a-z]+", "[A-Z]+", "{", "}", "'.'", ":", "\\|", ";", "\\*"};
         // Lexer used for parsing grammar string
         Lexer lexer{regexps, 11, 0};
         // Maps nonterminal and terminal symbols to their numerical representations
@@ -126,7 +126,7 @@ protected:
 
 public:
     BaseParserGenerator(char * grammarConfig, Lexer * lex);
-    friend std::ostream& operator<<(std::ostream& os, const BaseParserGenerator& parser);
+    friend std::ostream& operator<<(std::ostream& os, BaseParserGenerator& parser);
     //Disable copying and assigning
     BaseParserGenerator(BaseParserGenerator&) = delete;
     BaseParserGenerator& operator=(BaseParserGenerator&) = delete;
@@ -139,14 +139,14 @@ public:
     //Finish a pending reduction and associate the produced lhs symbol with the reduced value. Begin the next reduction
     //Primary means of advancing the parsing
     virtual ParseStatus reduce(void *reducedValue) = 0;
-    //Return number of the lhs symbol being reduced
+    //Return unincremented number of the lhs symbol being reduced
     virtual int lhsNum() = 0;
     //Return which production of a rule is being reduced
     virtual int prodNum() = 0;
-    //Return pointer to value of a specific rhs value being reduced
+    //Return pointer to value of a specific rhs value being reduced (0-indexed)
     virtual void *rhsVal(int pos) = 0;
     
-    //Returns number of current token, the expected token, and the column/line numbers in case parse fails
+    //Returns number of current token, the expected token (returns -1 for non-shift errors), and the column/line numbers in case parse fails
     virtual int curToken() = 0;
     virtual int expectedToken() = 0;
     int lineNum();
@@ -154,6 +154,7 @@ public:
 };
 
 struct ParseValue{
+public:
     void * ptr = NULL;
     bool toDelete = false;
     ~ParseValue(){

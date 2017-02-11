@@ -20,8 +20,9 @@ BaseParserGenerator::GrammarParser::GrammarParser(BaseParserGenerator *p, char *
 
 //Convert gtoken enum into string form
 const char* BaseParserGenerator::GrammarParser::gtokenName(Gtoken gtoken){
-    const char* const name[11] = {"newline", "spaces", "nonterminal", "terminal", "left bracket", "right bracket", 
-        "char", "colon", "pipe", "semicolon", "star"};
+    if (gtoken == INVALID) return "INVALID TOKEN";
+    const char* const name[11] = {"NEWLINES", "SPACES", "NONTERMINAL", "TERMINAL", "LEFT BRACE", "RIGHT BRACE", 
+        "CHAR", "COLON", "PIPE", "SEMICOLON", "STAR"};
     return name[gtoken];
 }
 //Error for unexpected token
@@ -180,7 +181,7 @@ void BaseParserGenerator::GrammarParser::parseProduction(){
 void BaseParserGenerator::GrammarParser::parseGrammar(){
     parseTokens();
     // Initialize the nonterminal number
-    ruleNum = tokenNum + 1;
+    ruleNum = tokenNum;
     // Parse rules until there are no more
     do{
         parseRule();
@@ -244,9 +245,9 @@ int BaseParserGenerator::next(){
     do {
         prevpos = curpos;
         curpos = lexptr->lex(curpos);
-    } while(tokenIgnore[lexptr->tokenID]);
-    //If no actual token is available, advance the input by 1 and return the char
-    if (lexptr->tokenID < 0){
+    } while(tokenIgnore[lexptr->tokenID] && prevpos==curpos);
+    //If no actual token is available or if token is empty, advance the input by 1 and return the char
+    if (lexptr->tokenID < 0 || prevpos==curpos){
         curpos++;
         lexptr->tokenCol++;
         return (int)(*prevpos);
@@ -284,12 +285,12 @@ int BaseParserGenerator::lineNum(){
 }
 
 //Iostream overload that prints the internal grammar as numbers
-std::ostream& operator<<(std::ostream& os, const BaseParserGenerator& parser){
+std::ostream& operator<<(std::ostream& os, BaseParserGenerator& parser){
     for (int i=0; i<parser.ruleNumStart.size()-1; i++){
         int j = parser.ruleNumStart[i];
         int end = parser.ruleNumStart[i+1];
         while (j < end){
-            os << i + parser.tokenNum << " : ";
+            os << parser.toRuleNum(i) << " : ";
             int rhsLimit = j + parser.grammar[j];
             j++;
             for (j; j <= rhsLimit; j++){
@@ -300,15 +301,3 @@ std::ostream& operator<<(std::ostream& os, const BaseParserGenerator& parser){
     }
     return os;
 }
-
-// int main()
-// {
-//     char *grammar = R"({ NAME NUM CHAR BRAC *}
-//     exp : NUM BRAC 'a' | CHAR CHAR abc exp abc;
-//     abc : BRAC exp |; 
-// )";
-
-//     BaseParserGenerator parser = BaseParserGenerator(grammar);
-//     std::cout << parser;
-//     return 0;
-//}
