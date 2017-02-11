@@ -241,11 +241,11 @@ int BaseParserGenerator::ruleStart(int symbol){
 
 //Return the token or char
 int BaseParserGenerator::next(){
-    //Skip all ignored tokens
+    //Skip all ignored tokens. Stop when empty token is encountered
     do {
         prevpos = curpos;
         curpos = lexptr->lex(curpos);
-    } while(tokenIgnore[lexptr->tokenID] && prevpos==curpos);
+    } while(tokenIgnore[lexptr->tokenID] && prevpos!=curpos);
     //If no actual token is available or if token is empty, advance the input by 1 and return the char
     if (lexptr->tokenID < 0 || prevpos==curpos){
         curpos++;
@@ -299,5 +299,10 @@ std::ostream& operator<<(std::ostream& os, BaseParserGenerator& parser){
             os << ";\n";
         }
     }
+    os << "Ignored: ";
+    for (int i=0; i<parser.tokenIgnore.size(); i++){
+        os << (int)parser.tokenIgnore[i] << ' ';
+    }
+    os << '\n';
     return os;
 }

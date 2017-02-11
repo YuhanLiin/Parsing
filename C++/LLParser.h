@@ -11,7 +11,8 @@ private:
     //Parse table will be queried via rule/nonterminal count and token/char #. Value points to corresponding production in the grammar
     ParseTable table{toRuleCount(ruleNum), tokenNum, -1};
     //Determines whether a rule can derive epsilon or not. 
-    //Value of -1 means the symbol hasn't been considered (only valid during table construction), 0 means no, 1 means yes 
+    //Value of -2 means the symbol hasn't been considered (only valid during table construction), -1 means no, otherwise yes.
+    //+ve values refer to the production that derives epsilon  
     short *derivesEpsilon = new short[toRuleCount(ruleNum)];
     //Parse stacks for symbols and values. Values set by users will need to be deleted by users.
     std::vector<ParseValue> valueStack;
@@ -29,8 +30,8 @@ private:
     ParseStatus shiftHelper();
     //Determine LHS symbol (incremented), symbol count, and production number of a production given its position in the grammar
     void updateReductionInfo(int prodPos);
-    //Returns ParseValue of current token, which is the token string on the heap
-    ParseValue tokenValue();
+    //Adds ParseValue of current token, which is the token string on the heap
+    void addTokenValue();
 
 public:
     friend std::ostream& operator<<(std::ostream& os, LLParser& parser);
@@ -40,7 +41,7 @@ public:
     ParseStatus parse(char *input);
     //Finish a pending reduction and associate the produced lhs symbol with the reduced value. Begin the next reduction
     //Primary means of advancing the parsing
-    ParseStatus reduce(void *reducedValue);
+    ParseStatus reduce(void *reducedValue, bool toDelete=false);
     //Return number of the lhs symbol being reduced
     int lhsNum();
     //Return which production of a rule is being reduced

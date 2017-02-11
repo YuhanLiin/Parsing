@@ -138,7 +138,7 @@ public:
     virtual ParseStatus parse(char *input) = 0;
     //Finish a pending reduction and associate the produced lhs symbol with the reduced value. Begin the next reduction
     //Primary means of advancing the parsing
-    virtual ParseStatus reduce(void *reducedValue) = 0;
+    virtual ParseStatus reduce(void *reducedValue, bool toDelete) = 0;
     //Return unincremented number of the lhs symbol being reduced
     virtual int lhsNum() = 0;
     //Return which production of a rule is being reduced
@@ -157,9 +157,6 @@ struct ParseValue{
 public:
     void * ptr = NULL;
     bool toDelete = false;
-    ~ParseValue(){
-        if (toDelete) delete ptr;
-    }
 };
 
 

@@ -3,10 +3,10 @@
 //Populates the LL parse table for a given LHS symbol
 void LLParser::populateTable(int lhs, std::unordered_set<int> &firstSet){
     //Only run function once for every symbol. By default symbols do not derive epsilon
-    if (derivesEpsilon[lhs] > -1){
+    if (derivesEpsilon[lhs] > -2){
         return;
     }
-    derivesEpsilon[lhs] = 0;
+    derivesEpsilon[lhs] = -1;
     //For each production of the given rule (i is start of production)
     for (int i = ruleStart(lhs); i < ruleStart(lhs+1); i = nextProduction(i)){
         std::unordered_set<int> descendantSet;
@@ -25,7 +25,7 @@ void LLParser::populateTable(int lhs, std::unordered_set<int> &firstSet){
             else{
                 populateTable(toRuleCount(frontSymbol), descendantSet);
                 //If the symbol derives epsilon, the following symbol is part of first set as well
-                if (!derivesEpsilon[toRuleCount(frontSymbol)]){
+                if (derivesEpsilon[toRuleCount(frontSymbol)] < 0){
                     break;
                 }
             }
@@ -37,7 +37,7 @@ void LLParser::populateTable(int lhs, std::unordered_set<int> &firstSet){
         }
         //If entire production has been considered, it means that every symbol derives epsilon, so the lhs does so as well
         if (j > i+grammar[i]){
-            derivesEpsilon[lhs] = 1;
+            derivesEpsilon[lhs] = i;
         }
     }
 }
@@ -46,7 +46,7 @@ void LLParser::populateTable(int lhs, std::unordered_set<int> &firstSet){
 LLParser::LLParser(char* grammarConfig, Lexer *lexptr) : BaseParserGenerator(grammarConfig, lexptr){
     //Initialize epsilon array to -1
     for (int i=0; i<toRuleCount(ruleNum); i++){
-        derivesEpsilon[i] = -1;
+        derivesEpsilon[i] = -2;
     }
     //Populate the parse table
     for (int i=0; i<toRuleCount(ruleNum); i++){
@@ -56,6 +56,11 @@ LLParser::LLParser(char* grammarConfig, Lexer *lexptr) : BaseParserGenerator(gra
 
 LLParser::~LLParser(){
     delete[] derivesEpsilon;
+    for (ParseValue &value : valueStack){
+        if (value.toDelete){
+            delete[] value.ptr;
+        }
+    }
 }
 
 //Reset all parse variables and shift until next reduction 
@@ -72,19 +77,19 @@ ParseStatus LLParser::parse(char* input){
 
 //Complete current reduction by replacing the rhs values on the value stack with input lhs value.
 //Checks for end of parse then continue shifting.
-ParseStatus LLParser::reduce(void *lhsValue){
+ParseStatus LLParser::reduce(void *lhsValue, bool toDelete){
     //Pop off reduction token
-    int prodPos = -symbolStack.back();
     symbolStack.pop_back();
-    //Push lhs symbol (incremented) onto the parse stack
-    symbolStack.push_back(curLhs);
     //Replace appropriate number of values off the value stack with user inputted value
     for (int i=0; i<curSymbolCount; i++){
+        if (valueStack.back().toDelete){
+            delete valueStack.back().ptr;
+        }
         valueStack.pop_back();
     }
     ParseValue value;
     value.ptr = lhsValue;
-    value.toDelete = false;
+    value.toDelete = toDelete;
     valueStack.push_back(value);
 
     //If the parse stack is empty AND the string has been fully parsed, the parse is done
@@ -94,11 +99,6 @@ ParseStatus LLParser::reduce(void *lhsValue){
     //If only the parse stack is empty, then the expected token should be \0, since the parse expects end of input
     else if (symbolStack.empty()){
         expectedTokenNum = 0;
-        return SYNTAXERROR;
-    }
-    //If only the string is fully parsed, then the expected token is unknown (could be nonterminal)
-    else if (curTokenNum==0){
-        expectedTokenNum = -1;
         return SYNTAXERROR;
     }
     //Shift until next reduction
@@ -115,6 +115,7 @@ int LLParser::prodNum(){
 }
 //Return pointer to value of nth reduced symbol
 void *LLParser::rhsVal(int pos){
+    //std::cout << curSymbolCount;
     return valueStack[valueStack.size() - curSymbolCount + pos].ptr;
 }
 
@@ -137,12 +138,9 @@ ParseStatus LLParser::shiftHelper(){
         //If the symbol is a terminal, try to match it to the current token. Get the next token
         if (isTerminal(symbol)){
             if (symbol == curTokenNum){
-                std::cout << symbol << '\n';
                 //Push the shifted token string onto the value stack
-                valueStack.push_back(tokenValue());
-                std::cout << "Good";
+                addTokenValue();
                 curTokenNum = next();
-                std::cout << "Great";
             }
             else{
                 //Expected the symbol-to-shift
@@ -152,17 +150,22 @@ ParseStatus LLParser::shiftHelper(){
         }
         //If symbol is nonterminal, insert the reduction symbol and the correct production backwards into the parse stack based on parse table
         else{
-            //std::cout << symbol << '\n';
             int productionPos = table(toRuleCount(symbol), curTokenNum);
-            if (productionPos > -1){
-                symbolStack.push_back(-productionPos);
-                addProduction(productionPos, symbolStack, true);
+            //If table entry doesn't exist for current lhs and token, then see if the lhs derives epsilon
+            if (productionPos < 0){
+                if (derivesEpsilon[toRuleCount(symbol)] > -1){
+                    //Use the epsilon-deriving production as the reducing production
+                    productionPos = derivesEpsilon[toRuleCount(symbol)];
+                }
+                //If lhs doesn't derive epsilon, then syntax error
+                else{
+                    expectedTokenNum = -1;
+                    return SYNTAXERROR;
+                }
             }
-            else if (!derivesEpsilon[symbol]){
-                //Don't know what token to expect, due to multiple valid lookaheads
-                expectedTokenNum = -1;
-                return SYNTAXERROR;
-            }
+            //Insert production
+            symbolStack.push_back(-productionPos);
+            addProduction(productionPos, symbolStack, true);
         }
     }
     //Extract info about the next reduction based on the next reduction symbol
@@ -182,13 +185,13 @@ void LLParser::updateReductionInfo(int prodPos){
     }
     //Loop through each production of the rule until the right one is found
     curProdNum = 0;
-    for (int j=ruleStart(toRuleCount(curLhs)); j==prodPos; j=nextProduction(j)){
+    for (int j=ruleStart(toRuleCount(curLhs)); j<prodPos; j=nextProduction(j)){
         curProdNum++;
     }
 }
 
-//Returns ParseValue of current token, which is the token string on the heap
-ParseValue LLParser::tokenValue(){
+//Adds ParseValue of current token, which is the token string on the heap
+void LLParser::addTokenValue(){
     std::string *stringPtr = new std::string();
     for (char* c=prevpos; c<curpos; c++){
         stringPtr->push_back(*c);
@@ -196,6 +199,5 @@ ParseValue LLParser::tokenValue(){
     ParseValue value;
     value.ptr = stringPtr;
     value.toDelete = true;
-    std::cout << "Why";
-    return value;
+    valueStack.push_back(value);
 }
