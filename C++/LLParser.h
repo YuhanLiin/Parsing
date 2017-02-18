@@ -38,9 +38,11 @@ public:
     LLParser(char*, Lexer*);
     ~LLParser();
     //Reset all internal variables and initiate parse on a new input. Begin the first reduction
+    //Will throw when called after parse fails
     ParseStatus parse(char *input);
     //Finish a pending reduction and associate the produced lhs symbol with the reduced value. Begin the next reduction
     //Primary means of advancing the parsing
+    //Will throw when called after parse fails
     ParseStatus reduce(void *reducedValue, bool toDelete=false);
     //Return number of the lhs symbol being reduced
     int lhsNum();

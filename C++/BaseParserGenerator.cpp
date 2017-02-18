@@ -11,7 +11,7 @@ const char* GrammarConfigError::what(){
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
-//GrammarParser constructor initializes tracker pointers
+//GParser constructor initializes tracker pointers
 BaseParserGenerator::GrammarParser::GrammarParser(BaseParserGenerator *p, char *grammarConfig){
     parser = p;
     curpos = grammarConfig;
@@ -19,16 +19,16 @@ BaseParserGenerator::GrammarParser::GrammarParser(BaseParserGenerator *p, char *
 }
 
 //Convert gtoken enum into string form
-const char* BaseParserGenerator::GrammarParser::gtokenName(Gtoken gtoken){
-    if (gtoken == INVALID) return "INVALID TOKEN";
+const char* BaseParserGenerator::GrammarParser::gtokenName(GParser::Gtoken gtoken){
+    if (gtoken == GParser::INVALID) return "INVALID TOKEN";
     const char* const name[11] = {"NEWLINES", "SPACES", "NONTERMINAL", "TERMINAL", "LEFT BRACE", "RIGHT BRACE", 
         "CHAR", "COLON", "PIPE", "SEMICOLON", "STAR"};
     return name[gtoken];
 }
 //Error for unexpected token
-void BaseParserGenerator::GrammarParser::error(Gtoken gtoken){
+void BaseParserGenerator::GrammarParser::error(GParser::Gtoken gtoken){
     std::cerr << "Grammar config error at line " << lexer.tokenLine << " position " << lexer.tokenCol << 
-    " : Unexpected token " << gtokenName((Gtoken)lexer.tokenID) << " encountered instead of token " << gtokenName(gtoken) << "\n";
+    " : Unexpected token " << gtokenName((GParser::Gtoken)lexer.tokenID) << " encountered instead of token " << gtokenName(gtoken) << "\n";
     throw GrammarConfigError("Grammar Config Error");
 }
 //Error with custom message
@@ -48,14 +48,14 @@ void BaseParserGenerator::GrammarParser::next(){
 }
 
 //Gets and asserts that the next token is equal to the parameter token
-void BaseParserGenerator::GrammarParser::next(Gtoken gtoken){
+void BaseParserGenerator::GrammarParser::next(GParser::Gtoken gtoken){
     next();
     if (lexer.tokenID != gtoken) 
         error(gtoken);
 }
 
 //Returns whether the current token equals the parameter. Does not advance input
-bool BaseParserGenerator::GrammarParser::tokenIs(Gtoken gtoken){
+bool BaseParserGenerator::GrammarParser::tokenIs(GParser::Gtoken gtoken){
     return lexer.tokenID == gtoken;
 }
 
@@ -78,11 +78,11 @@ void BaseParserGenerator::GrammarParser::replaceSymbol(int old, int replacement)
 // Parses the optional Token Declaration section
 void BaseParserGenerator::GrammarParser::parseTokens(){
     next();
-    if(tokenIs(LBRAC)){
+    if(tokenIs(GParser::LBRAC)){
         while(true) {
             next();
             // For token, extract and map the name to the token number 
-            if (tokenIs(TRML)){
+            if (tokenIs(GParser::TRML)){
                 std::string str;
                 getWord(str);
                 symbolTable[str] = tokenNum;
@@ -90,7 +90,7 @@ void BaseParserGenerator::GrammarParser::parseTokens(){
                 parser->tokenIgnore.push_back(0);
             }
             // For stars (*), mark the current token number as ignored
-            else if (tokenIs(STAR)){
+            else if (tokenIs(GParser::STAR)){
                 parser->tokenIgnore.push_back(1);
             }
             else{
@@ -99,7 +99,7 @@ void BaseParserGenerator::GrammarParser::parseTokens(){
             // Increment the token number for subsequent tokens
             tokenNum++;
         }
-        if (!tokenIs(RBRAC)) error(RBRAC);
+        if (!tokenIs(GParser::RBRAC)) error(GParser::RBRAC);
         // Shift input here to achieve similar semantics as the tokenless case
         next();
     }
@@ -108,7 +108,7 @@ void BaseParserGenerator::GrammarParser::parseTokens(){
 // Parses entire grammar rule and registers it into the internal representation
 // Responsible for granting the lhs symbol a non-placeholder (+ve) symbol #
 void BaseParserGenerator::GrammarParser::parseRule(){
-    if (!tokenIs(NTRML)) error(NTRML);
+    if (!tokenIs(GParser::NTRML)) error(GParser::NTRML);
     std::string lhs;
     getWord(lhs);
     //If there already exists a previous instance of the lhs nonterminal mapped to a placeholder, replace it with the newly derived symbol number
@@ -125,13 +125,13 @@ void BaseParserGenerator::GrammarParser::parseRule(){
     parser->ruleNumStart.push_back(parser->grammar.size());
     //Maps lhs nonterminal string to number
     symbolTable[lhs] = ruleNum;
-    next(COLON);
+    next(GParser::COLON);
 
     //Parse as many pipe-separated productions as possible before ending the rule with a semicolon
     do {
         parseProduction();
-    } while(tokenIs(PIPE));
-    if (!tokenIs(SCOLON)) error(SCOLON);
+    } while(tokenIs(GParser::PIPE));
+    if (!tokenIs(GParser::SCOLON)) error(GParser::SCOLON);
     //The next rule/lhs nonterminal is assigned an increased number
     ruleNum++;
 }
@@ -147,17 +147,17 @@ void BaseParserGenerator::GrammarParser::parseProduction(){
         std::string rhs;
         getWord(rhs);
         //Chars are added to the production as is
-        if (tokenIs(CHR)){
+        if (tokenIs(GParser::CHR)){
             parser->grammar.push_back(rhs[1]);
         }
         //Terminal symbols are assigned their numbers from the symbol table. Error raised if symbol doesn't exist
-        else if (tokenIs(TRML)){
+        else if (tokenIs(GParser::TRML)){
             int num = symbolNumber(rhs);
             if (!num) error("The terminal symbol does not exist in the Token Declaration");
             parser->grammar.push_back(num);
         }
         //Nonterminal symbol is either assigned its # from symbol table or given a -ve placeholder # that's replaced later 
-        else if (tokenIs(NTRML)){
+        else if (tokenIs(GParser::NTRML)){
             int rhsnum = symbolNumber(rhs);
             if (rhsnum){
                 parser->grammar.push_back(rhsnum);
@@ -245,7 +245,7 @@ int BaseParserGenerator::next(){
     do {
         prevpos = curpos;
         curpos = lexptr->lex(curpos);
-    } while(tokenIgnore[lexptr->tokenID] && prevpos!=curpos);
+    } while(prevpos!=curpos && tokenIgnore[lexptr->tokenID]);
     //If no actual token is available or if token is empty, advance the input by 1 and return the char
     if (lexptr->tokenID < 0 || prevpos==curpos){
         curpos++;

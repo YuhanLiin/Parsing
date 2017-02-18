@@ -69,6 +69,7 @@ ParseStatus LLParser::parse(char* input){
     prevpos = input;
     valueStack.clear();
     symbolStack.clear();
+    //Initialize the symbolStack with starting symbol
     symbolStack.push_back(toRuleNum(0));
     lexptr->reset();
     curTokenNum = next();
@@ -78,6 +79,15 @@ ParseStatus LLParser::parse(char* input){
 //Complete current reduction by replacing the rhs values on the value stack with input lhs value.
 //Checks for end of parse then continue shifting.
 ParseStatus LLParser::reduce(void *lhsValue, bool toDelete){
+    //If the parse stack is empty AND the string has been fully parsed, the parse is done
+    if (symbolStack.empty() && curTokenNum==0){
+        return DONE;
+    }
+    //If only the parse stack is empty, then the expected token should be \0, since the parse expects end of input
+    else if (symbolStack.empty()){
+        expectedTokenNum = 0;
+        return SYNTAXERROR;
+    }
     //Pop off reduction token
     symbolStack.pop_back();
     //Replace appropriate number of values off the value stack with user inputted value
@@ -91,18 +101,8 @@ ParseStatus LLParser::reduce(void *lhsValue, bool toDelete){
     value.ptr = lhsValue;
     value.toDelete = toDelete;
     valueStack.push_back(value);
-
-    //If the parse stack is empty AND the string has been fully parsed, the parse is done
-    if (symbolStack.empty() && curTokenNum==0){
-        return DONE;
-    }
-    //If only the parse stack is empty, then the expected token should be \0, since the parse expects end of input
-    else if (symbolStack.empty()){
-        expectedTokenNum = 0;
-        return SYNTAXERROR;
-    }
     //Shift until next reduction
-    shiftHelper();
+    return shiftHelper();
 }
 
 //Return unincremented lhs symbol number
@@ -130,6 +130,15 @@ int LLParser::expectedToken(){
 //Shift and expand tokens onto the parse stack until the next reduction happens
 //Reductions are represented with a -ve value on the stack, representing the position of the production in the grammar
 ParseStatus LLParser::shiftHelper(){
+    //If the parse stack is empty AND the string has been fully parsed, the parse is done
+    if (symbolStack.empty() && curTokenNum==0){
+        return DONE;
+    }
+    //If only the parse stack is empty, then the expected token should be \0, since the parse expects end of input
+    else if (symbolStack.empty()){
+        expectedTokenNum = 0;
+        return SYNTAXERROR;
+    }
     //Stop at next reduction
     while (symbolStack.back() > 0){
         //Pop symbol off parse stack
