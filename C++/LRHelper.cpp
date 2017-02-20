@@ -18,6 +18,12 @@ void LRStateSet::newState(){
     closureSet.push_back(std::vector<LRItem>());
 }
 
+void LRStateSet::pop(){
+    kernelSet.pop();
+    closureSet.pop();
+    length--;
+}
+
 size_t LRStateSet::size(){
     return length;
 }
@@ -46,8 +52,8 @@ LRTable::~LRTable(){
         delete[] reduction;
 }
 
-//Add new state in parse table
-void LRTable::newState(){
+//Add new row in parse table
+void LRTable::newRow(){
     length++;
     //Initiate new parse table entry
     transitions.push_back(new int[symbolCount]);

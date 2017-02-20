@@ -7,7 +7,7 @@
 struct LRItem{
     //Position of item's production in the grammar
     int prodPos;
-    //The nth symbol behind the "dot"
+    //The nth symbol behind the "dot". Starts at 0
     int dotPos;
     //LHS of item's production (incremented)
     int lhs;
@@ -44,6 +44,8 @@ public:
     void newState();
     //Return size
     size_t size();
+    //Pop off the last state
+    void pop();
     //Returns a specified kernel/closure state in the state set
     std::unordered_set<LRItem>& kernelState(int index);
     std::vector<LRItem>& closureState(int index);
@@ -69,8 +71,8 @@ public:
     //Delete copy and assignment constructors
     LRTable(LRTable&) = delete;
     LRTable &operator=(LRTable&) = delete;
-    //Add new state to table
-    void newState();
+    //Add new row to table
+    void newRow();
     //Turn the last state into a reduction state
     void reduceState(int prodPos, int lhs, int prodNum);
     //Returns production position in reducing state
