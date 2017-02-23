@@ -31,7 +31,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //Represents the tokens used to parse grammar strings. Enclosed in special namespace
-namespace GParser{
+namespace Gtoken{
     enum Gtoken {INVALID=-1, NEWLINE, SPACES, NTRML, TRML, LBRAC, RBRAC, CHR, COLON, PIPE, SCOLON, STAR};
 }
 //Represents current state of a given parse
@@ -72,12 +72,12 @@ private:
 
         GrammarParser(BaseParserGenerator *p, char *grammarConfig);
         //Parser helper functions
-        const char* gtokenName(GParser::Gtoken gtoken);
-        void error(GParser::Gtoken token);
+        const char* gtokenName(Gtoken::Gtoken gtoken);
+        void error(Gtoken::Gtoken token);
         void error(char * message);
         void next();
-        void next(GParser::Gtoken gtoken);
-        bool tokenIs(GParser::Gtoken gtoken);
+        void next(Gtoken::Gtoken gtoken);
+        bool tokenIs(Gtoken::Gtoken gtoken);
         void getWord(std::string &word);
         //Replaces all placeholders in the grammar with a specific number
         void replaceSymbol(int old, int replacement);

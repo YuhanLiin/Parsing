@@ -11,7 +11,7 @@ const char* GrammarConfigError::what(){
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
-//GParser constructor initializes tracker pointers
+//Gtoken constructor initializes tracker pointers
 BaseParserGenerator::GrammarParser::GrammarParser(BaseParserGenerator *p, char *grammarConfig){
     parser = p;
     curpos = grammarConfig;
@@ -19,16 +19,16 @@ BaseParserGenerator::GrammarParser::GrammarParser(BaseParserGenerator *p, char *
 }
 
 //Convert gtoken enum into string form
-const char* BaseParserGenerator::GrammarParser::gtokenName(GParser::Gtoken gtoken){
-    if (gtoken == GParser::INVALID) return "INVALID TOKEN";
+const char* BaseParserGenerator::GrammarParser::gtokenName(Gtoken::Gtoken gtoken){
+    if (gtoken == Gtoken::INVALID) return "INVALID TOKEN";
     const char* const name[11] = {"NEWLINES", "SPACES", "NONTERMINAL", "TERMINAL", "LEFT BRACE", "RIGHT BRACE", 
         "CHAR", "COLON", "PIPE", "SEMICOLON", "STAR"};
     return name[gtoken];
 }
 //Error for unexpected token
-void BaseParserGenerator::GrammarParser::error(GParser::Gtoken gtoken){
+void BaseParserGenerator::GrammarParser::error(Gtoken::Gtoken gtoken){
     std::cerr << "Grammar config error at line " << lexer.tokenLine << " position " << lexer.tokenCol << 
-    " : Unexpected token " << gtokenName((GParser::Gtoken)lexer.tokenID) << " encountered instead of token " << gtokenName(gtoken) << "\n";
+    " : Unexpected token " << gtokenName((Gtoken::Gtoken)lexer.tokenID) << " encountered instead of token " << gtokenName(gtoken) << "\n";
     throw GrammarConfigError("Grammar Config Error");
 }
 //Error with custom message
@@ -48,14 +48,14 @@ void BaseParserGenerator::GrammarParser::next(){
 }
 
 //Gets and asserts that the next token is equal to the parameter token
-void BaseParserGenerator::GrammarParser::next(GParser::Gtoken gtoken){
+void BaseParserGenerator::GrammarParser::next(Gtoken::Gtoken gtoken){
     next();
     if (lexer.tokenID != gtoken) 
         error(gtoken);
 }
 
 //Returns whether the current token equals the parameter. Does not advance input
-bool BaseParserGenerator::GrammarParser::tokenIs(GParser::Gtoken gtoken){
+bool BaseParserGenerator::GrammarParser::tokenIs(Gtoken::Gtoken gtoken){
     return lexer.tokenID == gtoken;
 }
 
@@ -78,11 +78,11 @@ void BaseParserGenerator::GrammarParser::replaceSymbol(int old, int replacement)
 // Parses the optional Token Declaration section
 void BaseParserGenerator::GrammarParser::parseTokens(){
     next();
-    if(tokenIs(GParser::LBRAC)){
+    if(tokenIs(Gtoken::LBRAC)){
         while(true) {
             next();
             // For token, extract and map the name to the token number 
-            if (tokenIs(GParser::TRML)){
+            if (tokenIs(Gtoken::TRML)){
                 std::string str;
                 getWord(str);
                 symbolTable[str] = tokenNum;
@@ -90,7 +90,7 @@ void BaseParserGenerator::GrammarParser::parseTokens(){
                 parser->tokenIgnore.push_back(0);
             }
             // For stars (*), mark the current token number as ignored
-            else if (tokenIs(GParser::STAR)){
+            else if (tokenIs(Gtoken::STAR)){
                 parser->tokenIgnore.push_back(1);
             }
             else{
@@ -99,7 +99,7 @@ void BaseParserGenerator::GrammarParser::parseTokens(){
             // Increment the token number for subsequent tokens
             tokenNum++;
         }
-        if (!tokenIs(GParser::RBRAC)) error(GParser::RBRAC);
+        if (!tokenIs(Gtoken::RBRAC)) error(Gtoken::RBRAC);
         // Shift input here to achieve similar semantics as the tokenless case
         next();
     }
@@ -108,7 +108,7 @@ void BaseParserGenerator::GrammarParser::parseTokens(){
 // Parses entire grammar rule and registers it into the internal representation
 // Responsible for granting the lhs symbol a non-placeholder (+ve) symbol #
 void BaseParserGenerator::GrammarParser::parseRule(){
-    if (!tokenIs(GParser::NTRML)) error(GParser::NTRML);
+    if (!tokenIs(Gtoken::NTRML)) error(Gtoken::NTRML);
     std::string lhs;
     getWord(lhs);
     //If there already exists a previous instance of the lhs nonterminal mapped to a placeholder, replace it with the newly derived symbol number
@@ -125,13 +125,13 @@ void BaseParserGenerator::GrammarParser::parseRule(){
     parser->ruleNumStart.push_back(parser->grammar.size());
     //Maps lhs nonterminal string to number
     symbolTable[lhs] = ruleNum;
-    next(GParser::COLON);
+    next(Gtoken::COLON);
 
     //Parse as many pipe-separated productions as possible before ending the rule with a semicolon
     do {
         parseProduction();
-    } while(tokenIs(GParser::PIPE));
-    if (!tokenIs(GParser::SCOLON)) error(GParser::SCOLON);
+    } while(tokenIs(Gtoken::PIPE));
+    if (!tokenIs(Gtoken::SCOLON)) error(Gtoken::SCOLON);
     //The next rule/lhs nonterminal is assigned an increased number
     ruleNum++;
 }
@@ -147,17 +147,17 @@ void BaseParserGenerator::GrammarParser::parseProduction(){
         std::string rhs;
         getWord(rhs);
         //Chars are added to the production as is
-        if (tokenIs(GParser::CHR)){
+        if (tokenIs(Gtoken::CHR)){
             parser->grammar.push_back(rhs[1]);
         }
         //Terminal symbols are assigned their numbers from the symbol table. Error raised if symbol doesn't exist
-        else if (tokenIs(GParser::TRML)){
+        else if (tokenIs(Gtoken::TRML)){
             int num = symbolNumber(rhs);
             if (!num) error("The terminal symbol does not exist in the Token Declaration");
             parser->grammar.push_back(num);
         }
         //Nonterminal symbol is either assigned its # from symbol table or given a -ve placeholder # that's replaced later 
-        else if (tokenIs(GParser::NTRML)){
+        else if (tokenIs(Gtoken::NTRML)){
             int rhsnum = symbolNumber(rhs);
             if (rhsnum){
                 parser->grammar.push_back(rhsnum);
@@ -188,6 +188,13 @@ void BaseParserGenerator::GrammarParser::parseGrammar(){
         // Shift because parseRule() assumes that its first token has already been advanced
         next();
     } while (*curpos != 0);
+
+    for (auto word : symbolTable){
+        if (word.second < 0){
+            std::cerr << "Grammar config error: Nonterminal symbol '" << word.first << "' does not appear on the left side of any rule.";
+            throw GrammarConfigError("Grammar Config Error");
+        }
+    }
 }
 
 // Returns symbol's symbol #. Returns 0 if symbol is not in table
