@@ -12,7 +12,7 @@ struct LRItem{
     //LHS of item's production (incremented)
     int lhs;
     //Return copy of item shifted by one
-    LRItem advance(); 
+    LRItem advance() const; 
 };
 
 //For the hashset
@@ -73,7 +73,7 @@ public:
     LRTable &operator=(LRTable&) = delete;
     //Add new row to table
     void newRow();
-    //Turn the last state into a reduction state
+    //Turn the last state into a reduction state. Prioritize shift over reduce, so shift actions won't be overwritten
     void reduceState(int prodPos, int lhs, int prodNum);
     //Returns production position in reducing state
     int& prodPos(int state);

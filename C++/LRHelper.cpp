@@ -1,6 +1,6 @@
 #include "LRHelper.h"
 
-LRItem LRItem::advance(){
+LRItem LRItem::advance() const{
     LRItem item;
     item.prodPos = prodPos;
     item.dotPos = dotPos+1;
@@ -19,8 +19,8 @@ void LRStateSet::newState(){
 }
 
 void LRStateSet::pop(){
-    kernelSet.pop();
-    closureSet.pop();
+    kernelSet.pop_back();
+    closureSet.pop_back();
     length--;
 }
 
@@ -69,9 +69,10 @@ void LRTable::newRow(){
 
 //Make last state reduction state
 void LRTable::reduceState(int prodPos, int lhs, int prodNum){
-    //Set entire table row to -2 for reduction
+    //Set entire table row to -2 (signifies a reduction) for symbols that have not yet been shifted. This prioritizes shift over reduce
     for (int i=0; i<symbolCount; i++){
-        transitions.back()[i] = -2;
+        if (transitions.back()[i] == -1)
+            transitions.back()[i] = -2;
     }
     //Set reduction parameters
     reductions.back()[0] = prodPos;

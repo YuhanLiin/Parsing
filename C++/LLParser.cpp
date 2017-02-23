@@ -44,7 +44,7 @@ void LLParser::populateTable(int lhs, std::unordered_set<int> &firstSet){
 
 //Constructor populates LL parse table
 LLParser::LLParser(char* grammarConfig, Lexer *lexptr) : BaseParserGenerator(grammarConfig, lexptr){
-    //Initialize epsilon array to -1
+    //Initialize epsilon array to -2 (unseen)
     for (int i=0; i<toRuleCount(ruleNum); i++){
         derivesEpsilon[i] = -2;
     }
