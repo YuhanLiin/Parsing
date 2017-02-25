@@ -56,10 +56,16 @@ LLParser::LLParser(char* grammarConfig, Lexer *lexptr) : BaseParserGenerator(gra
 
 LLParser::~LLParser(){
     delete[] derivesEpsilon;
-    for (ParseValue &value : valueStack){
-        if (value.toDelete){
-            delete[] value.ptr;
+    deleteValues(valueStack.size());
+}
+
+//Deletes x number of ParserValues on the value stack. Responsible for cleaning the associated memory
+void LLParser::deleteValues(int count){
+    for (int i=0; i<count; i++){
+        if (valueStack.back().toDelete){
+            delete valueStack.back().ptr;
         }
+        valueStack.pop_back();
     }
 }
 
@@ -67,7 +73,7 @@ LLParser::~LLParser(){
 ParseStatus LLParser::parse(char* input){
     curpos = input;
     prevpos = input;
-    valueStack.clear();
+    deleteValues(valueStack.size());
     symbolStack.clear();
     //Initialize the symbolStack with starting symbol
     symbolStack.push_back(toRuleNum(0));
@@ -91,12 +97,7 @@ ParseStatus LLParser::reduce(void *lhsValue, bool toDelete){
     //Pop off reduction token
     symbolStack.pop_back();
     //Replace appropriate number of values off the value stack with user inputted value
-    for (int i=0; i<curSymbolCount; i++){
-        if (valueStack.back().toDelete){
-            delete valueStack.back().ptr;
-        }
-        valueStack.pop_back();
-    }
+    deleteValues(curSymbolCount);
     ParseValue value;
     value.ptr = lhsValue;
     value.toDelete = toDelete;

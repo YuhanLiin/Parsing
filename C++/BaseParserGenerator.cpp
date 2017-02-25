@@ -291,6 +291,8 @@ int BaseParserGenerator::lineNum(){
     return lexptr->tokenLine;
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 //Iostream overload that prints the internal grammar as numbers
 std::ostream& operator<<(std::ostream& os, BaseParserGenerator& parser){
     for (int i=0; i<parser.ruleNumStart.size()-1; i++){

@@ -33,6 +33,8 @@ private:
     void updateReductionInfo(int prodPos);
     //Adds ParseValue of current token, which is the token string on the heap
     void addTokenValue();
+    //Deletes x number of ParserValues on the value stack. Responsible for cleaning the associated memory
+    void deleteValues(int count);
 
 public:
     friend std::ostream& operator<<(std::ostream& os, LLParser& parser);

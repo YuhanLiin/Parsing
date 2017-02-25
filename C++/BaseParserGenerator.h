@@ -156,7 +156,6 @@ public:
 };
 
 struct ParseValue{
-public:
     void * ptr = NULL;
     bool toDelete = false;
 };
