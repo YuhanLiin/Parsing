@@ -148,9 +148,9 @@ public:
     //Return pointer to value of a specific rhs value being reduced (0-indexed)
     virtual void *rhsVal(int pos) = 0;
     
-    //Returns number of current token, the expected token (returns -1 for non-shift errors), and the column/line numbers in case parse fails
+    //Returns number of current token, list of expected tokens, and the column/line numbers in case parse fails
     virtual int curToken() = 0;
-    virtual int expectedToken() = 0;
+    virtual std::vector<int> expectedTokens() = 0;
     int lineNum();
     int colNum();
 };

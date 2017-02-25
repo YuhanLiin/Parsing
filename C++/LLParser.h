@@ -17,9 +17,10 @@ private:
     //Parse stacks for symbols and values. Values set by users will need to be deleted by users.
     std::vector<ParseValue> valueStack;
     std::vector<int> symbolStack;
-    //Current token being parsed and the token expected by the parser
+    //Current token being parsed
     int curTokenNum = -1;
-    int expectedTokenNum = -1;
+    //The symbol the parser was trying to process when an error occurred
+    int expectedSymbol = 0;
     //Current lhs, production number, and number of rhs symbols to reduce
     int curLhs = -1;
     int curProdNum = -1;
@@ -50,8 +51,8 @@ public:
     int prodNum();
     //Return pointer to value of a specific rhs value being reduced
     void *rhsVal(int pos);
-    //Returns number of current token, the expected token (returns -1 for non-shift errors), and the column/line numbers in case parse fails
+    //Returns number of current token, the list of expected tokens, and the column/line numbers in case parse fails
     int curToken();
-    int expectedToken();
+    std::vector<int> expectedTokens();
 };
 #endif

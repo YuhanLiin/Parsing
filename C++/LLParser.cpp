@@ -85,7 +85,7 @@ ParseStatus LLParser::reduce(void *lhsValue, bool toDelete){
     }
     //If only the parse stack is empty, then the expected token should be \0, since the parse expects end of input
     else if (symbolStack.empty()){
-        expectedTokenNum = 0;
+        expectedSymbol = 0;
         return SYNTAXERROR;
     }
     //Pop off reduction token
@@ -123,8 +123,22 @@ int LLParser::curToken(){
     return curTokenNum;
 }
 
-int LLParser::expectedToken(){
-    return expectedTokenNum;
+//Builds a list of expected tokens/chars and returns them
+std::vector<int> LLParser::expectedTokens(){
+    std::vector<int> expected;
+    //If the expected symbol is a terminal, then that symbol is the only expected token
+    if (isTerminal(expectedSymbol)){
+        expected.push_back(expectedSymbol);
+        return expected;
+    }
+    //If the symbol is nonterminal, then the expected tokens are all that qualify as lookahead for that symbol
+    //Search the parse table for the tokens
+    for (int i=0; i<tokenNum; i++){
+        if (table(toRuleCount(expectedSymbol), i) >= 0){
+            expected.push_back(i);
+        }
+    }
+    return expected;
 }
 
 //Shift and expand tokens onto the parse stack until the next reduction happens
@@ -136,7 +150,7 @@ ParseStatus LLParser::shiftHelper(){
     }
     //If only the parse stack is empty, then the expected token should be \0, since the parse expects end of input
     else if (symbolStack.empty()){
-        expectedTokenNum = 0;
+        expectedSymbol = 0;
         return SYNTAXERROR;
     }
     //Stop at next reduction
@@ -152,8 +166,7 @@ ParseStatus LLParser::shiftHelper(){
                 curTokenNum = next();
             }
             else{
-                //Expected the symbol-to-shift
-                expectedTokenNum = symbol;
+                expectedSymbol = symbol;
                 return SYNTAXERROR;
             }
         }
@@ -168,7 +181,7 @@ ParseStatus LLParser::shiftHelper(){
                 }
                 //If lhs doesn't derive epsilon, then syntax error
                 else{
-                    expectedTokenNum = -1;
+                    expectedSymbol = symbol;
                     return SYNTAXERROR;
                 }
             }
