@@ -24,7 +24,7 @@ void LRParser::closure(LRStateSet &stateSet, int stateNum){
         if (!isTerminal(symbol) && !closed[symbol]){
             closed[symbol] = true;
             //For every production the symbol derives. Add a starting LR item for the production into the closure set
-            for (int r=ruleStart(symbol); r<ruleStart(symbol+1); r=nextProduction(r)){
+            for (int r=ruleStart(toRuleCount(symbol)); r<ruleStart(toRuleCount(symbol+1)); r=nextProduction(r)){
                 LRItem item = {r, 0, symbol};
                 stateSet.closureState(stateNum).push_back(item);
             }
@@ -94,6 +94,8 @@ void LRParser::makeTable(){
         }
         delete[] shifted;
     }
+    //Make it so that when the starting state recieves the completion of the starting rule, the acceptance action is triggered
+    table(0, toRuleNum(0)) = -3;
 }
 
 //Helper function that runs for every item when looping thru an item state.
@@ -127,4 +129,126 @@ int LRParser::findProdNum(const LRItem &item){
 
 LRParser::LRParser(char* grammarConfig, Lexer *lexptr) : BaseParserGenerator(grammarConfig, lexptr){
     makeTable();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+ParseStatus LRParser::parse(char *input){
+    curpos = input;
+    prevpos = input;
+    deleteValues(valueStack.size());
+    lexptr->reset();
+    stateStack.clear();
+    stateStack.push_back(0);
+    curTokenNum = next();
+    return shiftHelper();
+}
+
+//Advances the parse until a reduction occurs
+ParseStatus LRParser::shiftHelper(){
+    //Query the next action in the parse table via the most recent state and the current token
+    int action = table(stateStack.back(), curTokenNum);
+    //Continue while the parse table's next action is a shift action
+    while (action >= 0){
+        //Push the shifted-to state into the stack and get the next token   
+        stateStack.push_back(action);
+        curTokenNum = next();
+        action = table(stateStack.back(), curTokenNum);
+        //Push string value onto value stack
+        addParseValue();
+    }
+    if (action == -2){
+        return GOOD;
+    }
+    else{
+        return SYNTAXERROR;
+    }
+}
+
+//Performs a reduction and appends a user-provided value onto the value stack
+ParseStatus LRParser::reduce(void *reducedValue, bool toDelete){
+    int lastState = stateStack.back();
+    if (lastState != -2) return SYNTAXERROR;
+    //The # of states to pop off the state stack depends on the # of symbols in the reduced production
+    symbolCount = grammar[table.prodPos(lastState)];
+    for (int i=0; i<symbolCount; i++){
+        stateStack.pop_back();
+    }
+    //Replace the popped states with the new state that corresponds to the reduced lhs
+    stateStack.push_back(table(stateStack.back(), table.lhsNum(lastState)));
+    //Pop off the same # of values off the value stack and replace with the inputted parse value
+    deleteValues(symbolCount);
+    valueStack.push_back(ParseValue());
+    valueStack.back().toDelete = toDelete;
+    valueStack.back().ptr = reducedValue;
+
+    //If the acceptance action has been encountered, meaning that the starting rule has been completely reduced
+    if (stateStack.back()==-3){
+        //The parse is successful if no tokens are left
+        if (curTokenNum==0){
+            return DONE;
+        }
+        //Otherwise, \0 is the expected token
+        else{
+            return SYNTAXERROR;
+        }
+    }
+    return shiftHelper();
+}
+
+//Adds a parse value to the value stack corresponding to the current token
+void LRParser::addParseValue(){
+    valueStack.push_back(ParseValue());
+    ParseValue &value = valueStack.back();
+    //Allocate a new string onto the ptr and copy the contents of the current token into it
+    std::string* sptr = new std::string;
+    for (char * c=prevpos; c<curpos; c++){
+        sptr->push_back(*c);
+    }
+    value.ptr = sptr;
+    //The parser will clean the memory of the value
+    value.toDelete = true;
+}
+
+//Deletes x number of ParserValues on the value stack. Responsible for cleaning the associated memory
+void LRParser::deleteValues(int count){
+    for (int i=0; i<count; i++){
+        if (valueStack.back().toDelete){
+            delete valueStack.back().ptr;
+        }
+        valueStack.pop_back();
+    }
+}
+
+int LRParser::lhsNum(){
+    return table.lhsNum(stateStack.back());
+}
+
+int LRParser::prodNum(){
+    return table.prodNum(stateStack.back());
+}
+
+void *LRParser::rhsVal(int pos){
+    return valueStack[valueStack.size() - symbolCount + pos].ptr;
+}
+
+int LRParser::curToken(){
+    return curTokenNum;
+}
+
+//Returns list of tokens the parser expects at this point in the parse
+std::vector<int> LRParser::expectedTokens(){
+    std::vector<int> list;
+    //Having the acceptance state means that the input was too long, and \0 was expected
+    if (stateStack.back()==-3){
+        list.push_back(0);
+        return list;
+    }
+    //Loop thru all look ahead tokens and add the ones that produce a shift action for the current state
+    for (int i=0; i<tokenNum; i++){
+        if (table(stateStack.back(), i) >= 0){
+            list.push_back(i);
+        }
+    }
+    return list;
 }

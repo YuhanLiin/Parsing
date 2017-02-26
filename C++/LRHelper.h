@@ -54,7 +54,7 @@ public:
 //Represents LR parse table
 class LRTable {
     //Vector of int arrays to represent the transition table of states to symbols
-    //-1 is no transition, -2 is reduction, +ve indicates which state to shift to
+    //-1 is no transition, -2 is reduction, -3 is accept, +ve indicates which state to shift to
     std::vector<int*> transitions;
     //Represent the reduction attributes of each state, if any. 
     //[0] is production position, [1] is the lhs, [2] is the production number 

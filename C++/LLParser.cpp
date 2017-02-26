@@ -79,6 +79,7 @@ ParseStatus LLParser::parse(char* input){
     symbolStack.push_back(toRuleNum(0));
     lexptr->reset();
     curTokenNum = next();
+    expectedSymbol = 0;
     return shiftHelper();
 }
 
