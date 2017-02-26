@@ -285,7 +285,7 @@ bool BaseParserGenerator::isTerminal(int symbol){
 
 //Return lexer's column and line numbers
 int BaseParserGenerator::colNum(){
-    return lexptr->tokenCol;
+    return lexptr->tokenCol-1;
 }
 int BaseParserGenerator::lineNum(){
     return lexptr->tokenLine;
