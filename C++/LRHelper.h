@@ -11,6 +11,8 @@ struct LRItem{
     int dotPos;
     //LHS of item's production (incremented)
     int lhs;
+    //Whether the item corresponds to a starting production
+    bool isStarting;
     //Return copy of item shifted by one
     LRItem advance() const; 
 };
@@ -74,7 +76,7 @@ public:
     //Add new row to table
     void newRow();
     //Turn the last state into a reduction state. Prioritize shift over reduce, so shift actions won't be overwritten
-    void reduceState(int prodPos, int lhs, int prodNum);
+    void reduceState(int prodPos, int lhs, int prodNum, bool isAccepting);
     //Returns production position in reducing state
     int& prodPos(int state);
     //Return reduction lhs num reference for a state

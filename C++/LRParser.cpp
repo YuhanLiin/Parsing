@@ -21,8 +21,8 @@ void LRParser::closure(LRStateSet &stateSet, int stateNum){
     for (const LRItem &item : stateSet.kernelState(stateNum)){
         closureHelper(stateSet, item, closed, stateNum);
     }
-    for (const LRItem &item : stateSet.closureState(stateNum)){
-        closureHelper(stateSet, item, closed, stateNum);
+    for (int i=0; i<stateSet.closureState(stateNum).size(); i++){
+        closureHelper(stateSet, stateSet.closureState(stateNum)[i], closed, stateNum);
     }
     delete[] closed;
 }
@@ -35,7 +35,7 @@ void LRParser::closureHelper(LRStateSet &stateSet, LRItem item, bool *closed, in
         closed[symbol] = true;
         //For every production the symbol derives. Add a starting LR item for the production into the closure set
         for (int r=ruleStart(toRuleCount(symbol)); r<ruleStart(toRuleCount(symbol+1)); r=nextProduction(r)){
-            LRItem item = {r, 0, symbol};
+            LRItem item = {r, 0, symbol, false};
             stateSet.closureState(stateNum).push_back(item);
         }
     }
@@ -78,7 +78,7 @@ void LRParser::makeTable(){
     stateSet.newState();
     //Initialize the first kernel state with items corresponding to every production of the starting state (0)
     for (int i=0; i<ruleStart(1); i=nextProduction(i)){
-        LRItem startItem = {i, 0, toRuleNum(0)};
+        LRItem startItem = {i, 0, toRuleNum(0), true};
         stateSet.kernelState(0).insert(startItem);
     }
 
@@ -102,8 +102,6 @@ void LRParser::makeTable(){
         }
         delete[] shifted;
     }
-    //Make it so that when the starting state recieves the completion of the starting rule, the acceptance action is triggered
-    table(0, toRuleNum(0)) = -3;
 }
 
 //Helper function that runs for every item when looping thru an item state.
@@ -112,7 +110,16 @@ void LRParser::makeTableHelper(LRStateSet &stateSet, const LRItem &item, int cur
     int symbol = curSymbol(item);
     //If the item's dot has reached the end of the production, reduce the state for that item.
     if (symbol == -1){
-        table.reduceState(item.prodPos, item.lhs, findProdNum(item));
+        bool accepting;
+        //If the item was initially added to state 0, then its reduction would mean end of parse
+        //Thus, the state is treated as a reduction state instead
+        if (item.isStarting){
+            accepting = true;
+        }
+        else{
+            accepting = false;
+        }
+        table.reduceState(item.prodPos, item.lhs, findProdNum(item), accepting);
     }
     //Otherwise, if the dot symbol hasn't been shifted yet, then update the table with the shifted state for that symbol.
     else if (!shifted[symbol]){
@@ -139,6 +146,10 @@ LRParser::LRParser(char* grammarConfig, Lexer *lexptr) : BaseParserGenerator(gra
     makeTable();
 }
 
+LRParser::~LRParser(){
+    deleteValues(valueStack.size());
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ParseStatus LRParser::parse(char *input){
@@ -156,30 +167,31 @@ ParseStatus LRParser::parse(char *input){
 ParseStatus LRParser::shiftHelper(){
     //Query the next action in the parse table via the most recent state and the current token
     int action = table(stateStack.back(), curTokenNum);
-    std::cout << curTokenNum;
     //Continue while the parse table's next action is a shift action
     while (action >= 0){
         //Push the shifted-to state into the stack and get the next token   
         stateStack.push_back(action);
-        curTokenNum = next();
-        action = table(stateStack.back(), curTokenNum);
         //Push string value onto value stack
         addParseValue();
+        curTokenNum = next();
+        action = table(stateStack.back(), curTokenNum);
     }
-    if (action == -2){
-        return GOOD;
+    if (action == -1){
+        return SYNTAXERROR;
     }
     else{
-        return SYNTAXERROR;
+        //The # of states to pop off the state stack depends on the # of symbols in the reduced production
+        //Set this var here so rhsVal() will work afterwards
+        symbolCount = grammar[table.prodPos(stateStack.back())];
+        return GOOD;
     }
 }
 
 //Performs a reduction and appends a user-provided value onto the value stack
 ParseStatus LRParser::reduce(void *reducedValue, bool toDelete){
     int lastState = stateStack.back();
-    if (lastState != -2) return SYNTAXERROR;
-    //The # of states to pop off the state stack depends on the # of symbols in the reduced production
-    symbolCount = grammar[table.prodPos(lastState)];
+    //Invoke syntax error if the current state isnt a reduction state
+    if (table.lhsNum(lastState) < 0) return SYNTAXERROR;
     for (int i=0; i<symbolCount; i++){
         stateStack.pop_back();
     }
@@ -191,14 +203,14 @@ ParseStatus LRParser::reduce(void *reducedValue, bool toDelete){
     valueStack.back().toDelete = toDelete;
     valueStack.back().ptr = reducedValue;
 
-    //If the acceptance action has been encountered, meaning that the starting rule has been completely reduced
-    if (stateStack.back()==-3){
-        //The parse is successful if no tokens are left
-        if (curTokenNum==0){
+    //If the reduced state was an accepting state
+    if (table(lastState, curTokenNum)==-3){
+        //Finish parse if done reading input
+        if (curTokenNum==0)
             return DONE;
-        }
-        //Otherwise, \0 is the expected token
-        else{
+        //Otherwise, if the parser can parse no more tokens after the accepting lhs has been completed, emit syntax error.
+        //Expected token is \0, since parse should be finished. 
+        if (stateStack.back()==-1){
             return SYNTAXERROR;
         }
     }
@@ -230,7 +242,7 @@ void LRParser::deleteValues(int count){
 }
 
 int LRParser::lhsNum(){
-    return table.lhsNum(stateStack.back());
+    return toRuleCount(table.lhsNum(stateStack.back()));
 }
 
 int LRParser::prodNum(){
@@ -248,8 +260,8 @@ int LRParser::curToken(){
 //Returns list of tokens the parser expects at this point in the parse
 std::vector<int> LRParser::expectedTokens(){
     std::vector<int> list;
-    //Having the acceptance state means that the input was too long, and \0 was expected
-    if (stateStack.back()==-3){
+    //Having -1 state means that the input was too long, and \0 was expected
+    if (stateStack.back()==-1){
         list.push_back(0);
         return list;
     }

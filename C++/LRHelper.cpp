@@ -5,11 +5,12 @@ LRItem LRItem::advance() const{
     item.prodPos = prodPos;
     item.dotPos = dotPos+1;
     item.lhs = lhs;
+    item.isStarting = isStarting;
     return item;
 }
 
 bool operator==(const LRItem &x, const LRItem &y){
-    return (y.prodPos==x.prodPos && y.dotPos==x.dotPos && y.lhs==x.lhs);
+    return (y.prodPos==x.prodPos && y.dotPos==x.dotPos && y.lhs==x.lhs && x.isStarting == y.isStarting);
 }
 
 void LRStateSet::newState(){
@@ -68,11 +69,13 @@ void LRTable::newRow(){
 }
 
 //Make last state reduction state
-void LRTable::reduceState(int prodPos, int lhs, int prodNum){
+void LRTable::reduceState(int prodPos, int lhs, int prodNum, bool isAccepting){
+    //The number that the row will be set to is -3 for accepting state and -2 otherwise
+    int entryNum = (isAccepting) ? -3 : -2;
     //Set entire table row to -2 (signifies a reduction) for symbols that have not yet been shifted. This prioritizes shift over reduce
     for (int i=0; i<symbolCount; i++){
         if (transitions.back()[i] == -1)
-            transitions.back()[i] = -2;
+            transitions.back()[i] = entryNum;
     }
     //Set reduction parameters
     reductions.back()[0] = prodPos;

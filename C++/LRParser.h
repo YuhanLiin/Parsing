@@ -1,3 +1,4 @@
+#pragma once
 #include "BaseParserGenerator.h"
 #include "LRHelper.h"
 #include <iostream>
@@ -37,6 +38,7 @@ public:
     friend std::ostream &operator<<(std::ostream &os, LRParser &parser);
     //Constructs the parse table
     LRParser(char*, Lexer*);
+    ~LRParser();
     //Reset all internal variables and initiate parse on a new input. Begin the first reduction
     ParseStatus parse(char *input);
     //Finish a pending reduction and associate the produced lhs symbol with the reduced value. Begin the next reduction
