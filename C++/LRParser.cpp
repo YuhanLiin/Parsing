@@ -19,18 +19,26 @@ void LRParser::closure(LRStateSet &stateSet, int stateNum){
     }
     //Loop thru each item in the kernel set
     for (const LRItem &item : stateSet.kernelState(stateNum)){
-        int symbol = curSymbol(item);
-        //If the symbol is nonterminal and hasnt been closed yet
-        if (!isTerminal(symbol) && !closed[symbol]){
-            closed[symbol] = true;
-            //For every production the symbol derives. Add a starting LR item for the production into the closure set
-            for (int r=ruleStart(toRuleCount(symbol)); r<ruleStart(toRuleCount(symbol+1)); r=nextProduction(r)){
-                LRItem item = {r, 0, symbol};
-                stateSet.closureState(stateNum).push_back(item);
-            }
-        }
+        closureHelper(stateSet, item, closed, stateNum);
+    }
+    for (const LRItem &item : stateSet.closureState(stateNum)){
+        closureHelper(stateSet, item, closed, stateNum);
     }
     delete[] closed;
+}
+
+//Gets called on every LRItem in the parse state during closure
+void LRParser::closureHelper(LRStateSet &stateSet, LRItem item, bool *closed, int stateNum){
+    int symbol = curSymbol(item);
+    //If the symbol is nonterminal and hasnt been closed yet
+    if (!isTerminal(symbol) && !closed[symbol]){
+        closed[symbol] = true;
+        //For every production the symbol derives. Add a starting LR item for the production into the closure set
+        for (int r=ruleStart(toRuleCount(symbol)); r<ruleStart(toRuleCount(symbol+1)); r=nextProduction(r)){
+            LRItem item = {r, 0, symbol};
+            stateSet.closureState(stateNum).push_back(item);
+        }
+    }
 }
 
 //Shifts the items in a given state for one symbol. Makes new state if it doesn't exist yet 
@@ -148,6 +156,7 @@ ParseStatus LRParser::parse(char *input){
 ParseStatus LRParser::shiftHelper(){
     //Query the next action in the parse table via the most recent state and the current token
     int action = table(stateStack.back(), curTokenNum);
+    std::cout << curTokenNum;
     //Continue while the parse table's next action is a shift action
     while (action >= 0){
         //Push the shifted-to state into the stack and get the next token   

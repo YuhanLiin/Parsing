@@ -9,6 +9,8 @@ private:
     int curSymbol(const LRItem &item);
     //Runs the closure operation on the latest kernel state
     void closure(LRStateSet &stateSetm, int state);
+    //Gets called on every LRItem in the parse state during closure
+    void closureHelper(LRStateSet &stateSet, LRItem item, bool *closed, int stateNum);
     //Runs the shift operation on the latest kernel state for the given symbol
     int shiftSymbol(LRStateSet &stateSet, int symbolNum, int state);
     //Makes the LR parse table
